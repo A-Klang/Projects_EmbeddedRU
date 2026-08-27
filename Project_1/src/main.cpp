@@ -1,18 +1,14 @@
 #include <Arduino.h>
+#include <util/delay.h>
+#include <encoder.h>
 
-// put function declarations here:
-int myFunction(int, int);
+Encoder enc(3, 4, 5); // C1=PD3, C2=PD4, LED = PB5)
 
 void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+  enc.init();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-}
-
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+  enc.sample();
+  _delay_us(140); // ~286/2
 }

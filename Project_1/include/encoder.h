@@ -16,5 +16,3 @@ class Encoder
         bool last_c1;
         int pos;
 };
-
-// Connected to D3 and D4

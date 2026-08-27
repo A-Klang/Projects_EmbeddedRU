@@ -3,7 +3,7 @@ class Digital_in
     public:
         Digital_in(uint8_t pin);
         void init();
-        int position();
+        bool is_hi();
 
     private:
         uint8_t pinMask;

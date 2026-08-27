@@ -1,14 +1,15 @@
 #include <avr/io.h>
 #include <digital_in.h>
 
-Digital_in::Digital_in(uint8_t pin) 
+// Bound to port D currently
+Digital_in::Digital_in(uint8_t pin)
 : pinMask(1 << pin) {}
 
 void Digital_in::init() {
-    DDRB &= ~pinMask; //input mode
-    PORTB |= pinMask; 
+    DDRD &= ~pinMask; //input mode
+    PORTD |= pinMask;
 }
 
-int Digital_in::position() {
-
+bool Digital_in::is_hi() {
+    return (PIND & pinMask) != 0;
 }

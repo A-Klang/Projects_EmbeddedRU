@@ -1,6 +1,7 @@
 #include <avr/io.h>
 #include <digital_out.h>
 
+// Bound to Port B currently
 Digital_out::Digital_out(uint8_t pin) 
 : pinMask(1 << pin) {}
 

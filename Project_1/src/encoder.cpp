@@ -7,8 +7,27 @@ Encoder::Encoder(uint8_t c1_pin, uint8_t c2_pin, uint8_t led_pin)
 
 void Encoder::init() {
     c1.init();
+    c2.init();
+    led.init();
+    last_c1 = c1.is_hi();
+    pos = 0;
 }
 
-int Digital_in::position() {
+int Encoder::position() {
+    return pos;
+}
 
+void Encoder::sample() {
+    bool now_c1 = c1.is_hi();
+    if (now_c1 != last_c1) {
+        if (now_c1 == c2.is_hi())
+            pos++;
+        else
+            pos--;
+        last_c1 = now_c1;
+        led.set_hi();
+    } 
+    else {
+        led.set_lo();
+    }
 }
