@@ -1,5 +1,6 @@
 #include <digital_in.h>
 #include <digital_out.h>
+#include <avr/interrupt.h>
 
 class Encoder
 {
@@ -8,11 +9,14 @@ class Encoder
         void init();
         void sample();
         int position();
+        void update();
+        Digital_out led;
+        
 
     private:
         Digital_in c1;
         Digital_in c2;
-        Digital_out led;
+        
         bool last_c1;
         int pos;
 };
