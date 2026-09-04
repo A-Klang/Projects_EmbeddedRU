@@ -18,6 +18,8 @@ int Encoder::position() {
 }
 
 void Encoder::sample() {
+   // if (c1.is_hi())
+   //         led.set_hi();
     bool now_c1 = c1.is_hi();
     if (now_c1 != last_c1) {
         if (now_c1 == c2.is_hi())
