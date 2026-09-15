@@ -7,7 +7,9 @@ class Encoder
         Encoder(uint8_t c1_pin, uint8_t c2_pin, uint8_t led_pin);
         void init();
         void update(); // called from ISR(PCINT2_vect), not meant to be called directly
+        void sample_speed();
         int position();
+        float speed();
 
     private:
         Digital_in c1;
@@ -15,6 +17,11 @@ class Encoder
         Digital_out led;
         bool last_c1;
         volatile int pos;
+        volatile int last_sample_pos;
+        volatile float speed_rpm;
+
+        static constexpr float period_ms = 200.0;
+        static constexpr float counts_per_rev = 2100.0;
 };
 
 // The single encoder instance. Defined in encoder.cpp (pin wiring lives

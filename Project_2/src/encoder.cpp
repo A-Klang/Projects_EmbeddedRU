@@ -6,15 +6,12 @@
 
 Encoder enc(4, 3, 5); // C2=PD3, C1=PD4, LED=PB5
 volatile uint8_t portd_history = 0xFF; // default is high because of pull-up
-int last_pos = 0;
-int delta_pos = 0;
-float period_ms = 200;
-float v = 0;
 
 Timer_msec timer;
 
 Encoder::Encoder(uint8_t c1_pin, uint8_t c2_pin, uint8_t led_pin)
-: c1(c1_pin), c2(c2_pin), led(led_pin), last_c1(false), pos(0) {}
+: c1(c1_pin), c2(c2_pin), led(led_pin), last_c1(false), 
+pos(0), last_sample_pos(0), speed_rpm(0) {}
 
 
 void Encoder::init() {
@@ -34,6 +31,10 @@ int Encoder::position() {
     return pos;
 }
 
+float Encoder::speed() {
+    return speed_rpm;
+}
+
 void Encoder::update() {
     led.set_hi();
     bool now_c1 = c1.is_hi();
@@ -45,20 +46,24 @@ void Encoder::update() {
     led.set_lo();
 }
 
+void Encoder::sample_speed() {
+    int now_pos = pos;
+    int delta = now_pos - last_sample_pos;
+    speed_rpm = ((delta / period_ms) / counts_per_rev) * 60000.0f; // pulses per ms divided by pulses per rev = revs per ms, scale to 1min.
+    last_sample_pos = now_pos;
+}
+
 ISR (PCINT2_vect)
 {
-  uint8_t changed_bits = PIND ^ portd_history;
-  portd_history = PIND;
-  if(changed_bits & (1 << PIND4)) // PD4 changed
+    uint8_t changed_bits = PIND ^ portd_history;
+    portd_history = PIND;
+    if(changed_bits & (1 << PIND4)) // PD4 changed
     enc.update();
 }
 
 ISR(TIMER1_COMPA_vect) 
-  {
-    int now_pos = enc.position();
-    delta_pos = (now_pos-last_pos);
-    v = ((delta_pos/200.0)/2100)*60000; // pulses per ms divided by pulses per rev = revs per ms, scale to 1min.
-    last_pos = now_pos;
+{
+    enc.sample_speed();
     Serial.print("v = ");
-    Serial.println(v);
-  } 
+    Serial.println(enc.speed());
+} 
