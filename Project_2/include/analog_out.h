@@ -9,14 +9,12 @@ class Analog_out
 public:
     Analog_out(int pin);
     void init(int period_us = 120);
-    void set(int duty_cycle);
+    void set(double duty_cycle);
 
 private:
     Timer_usec timer;
 public:    
     Digital_out pin;
 };
-
-extern Analog_out analog;
 
 #endif // ANALOG_OUT_H

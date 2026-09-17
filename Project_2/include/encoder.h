@@ -16,8 +16,10 @@ class Encoder
         void set_speed();
         volatile int counter = 0;
         volatile double ref_speed;
-        Analog_out AIN1;
-        Analog_out AIN2;
+        volatile double last_pwm = 0; // most recent PWM value returned by P_cont.update(), for reporting
+        Analog_out pwm_pin; // was AIN1 - drives H-bridge
+        Digital_out dir_pin; // was AIN2 - fixed direction level, not PWM
+
 
     private:
         Digital_in c1;

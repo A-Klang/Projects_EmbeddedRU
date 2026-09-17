@@ -1,3 +1,4 @@
+#include <stdio.h>
 #pragma once
 
 class Digital_in

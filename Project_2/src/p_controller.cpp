@@ -10,6 +10,10 @@ P_controller::P_controller(double Kp) {
     K_p = Kp;
 }
 
-void P_controller::update(double ref, double actual) {
-    pwm_value = K_p * (ref - actual);
+double P_controller::update(double ref, double actual) {
+    return K_p * (ref - actual);
+}
+
+void P_controller::set_Kp(double Kp) {
+    K_p = Kp;
 }

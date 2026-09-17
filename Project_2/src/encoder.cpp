@@ -12,7 +12,7 @@ volatile uint8_t portd_history = 0xFF; // default is high because of pull-up
 Timer_msec timer;
 
 Encoder::Encoder(uint8_t c1_pin, uint8_t c2_pin, uint8_t led_pin, uint8_t AIN1_port, uint8_t AIN2_port)
-: c1(c1_pin), c2(c2_pin), led(led_pin), AIN1(AIN1_port), AIN2(AIN2_port), last_c1(false), 
+: c1(c1_pin), c2(c2_pin), led(led_pin), pwm_pin(AIN1_port), dir_pin(AIN2_port), last_c1(false), 
 pos(0), last_sample_pos(0), speed_rpm(0) {}
 
 
@@ -21,8 +21,8 @@ void Encoder::init() {
     c1.init();
     c2.init();
     led.init();
-    AIN1.init();
-    AIN2.init();
+    pwm_pin.init(); //Previously AIN1
+    dir_pin.init(); //Previously AIN2
     last_c1 = c1.is_hi();
     pos = 0;
     counter = 0;
@@ -54,9 +54,10 @@ void Encoder::update() {
 void Encoder::sample_speed() {
     int now_pos = pos;
     int delta = now_pos - last_sample_pos;
-    speed_rpm = ((delta / period_ms) / counts_per_rev) * 60000.0f; // pulses per ms divided by pulses per rev = revs per ms, scale to 1min.
+    speed_rpm = ((delta / period_ms) / counts_per_rev) * 60000.0f;
     last_sample_pos = now_pos;
 }
+
 
 ISR (PCINT2_vect)
 {
@@ -70,6 +71,14 @@ ISR(TIMER1_COMPA_vect)
 {
     enc.counter++;
     enc.sample_speed();
-    P_cont.update(enc.ref_speed, enc.get_speed());
-    enc.AIN1.set(P_cont.pwm_value);
+    double pwm_value = P_cont.update(enc.ref_speed, enc.get_speed());
+    enc.last_pwm = pwm_value;
+
+    //If/else to enable going both directions using pos/neg rpm
+    if (pwm_value >= 0)
+        enc.dir_pin.set_hi();
+    else
+        enc.dir_pin.set_lo();
+    enc.pwm_pin.set(fabs(pwm_value));
+
 } 

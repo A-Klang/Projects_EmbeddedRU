@@ -7,9 +7,8 @@ class P_controller
 {
     public:
         P_controller(double Kp);
-        void update(double ref, double actual);
-        double pwm_value;
-
+        double update(double ref, double actual);
+        void set_Kp(double Kp);
 
     private:
         double K_p;

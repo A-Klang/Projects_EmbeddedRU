@@ -33,3 +33,37 @@ Inside the interrupt (timer1) we store the speed and control output inside some 
 
 **Task 5: Stable PWM output for the motor**
 We want to choose a $f_{pwm}$ that is sufficiently faster than the $f_{update}$ that the average output voltage "looks" stable even if we are actually just switching the pin on/off (5V/0V) instead of "pulsing" which is what might happen if we set 5V/0V switch not often enough.
+
+## Part 4
+
+### P_controller class
+
+Implemented `P_controller(double Kp)` and `double update(double ref, double actual)`, computing `u(t) = Kp*(ref - actual)` and returning it directly each call (not accumulated onto the previous value, per spec).
+
+### Working point (note, not yet the required step-response plot)
+
+$K_p = 1$, $ref\_speed = 50$ RPM, $period_{ms} = 1$ms. Console output as `actual_rpm,pwm_value`:
+
+```text
+8.57,21.43
+27.14,21.43
+40.00,-7.14
+42.86,-7.14
+44.29,21.43
+45.71,-7.14
+45.71,-7.14
+45.71,21.43
+47.14,-7.14
+45.71,-7.14
+47.14,21.43
+45.71,-7.14
+47.14,21.43
+45.71,-7.14
+47.14,21.43
+45.71,-7.14
+47.14,21.43
+```
+
+Settles into a steady band of ~44.29-47.14 RPM, never reaching the 50 RPM reference. This is expected for proportional-only control: a nonzero error is required to keep supplying nonzero duty against motor friction, so it can only approach the reference, never reach or exceed it (assignment note confirms this is expected, to be addressed by a later, non-P controller). No large-scale oscillation is visible, so $K_p=1$ counts as a "suitable" gain per the assignment's stability criterion.
+
+Note: `pwm_value` itself flips sign almost every tick (e.g. `21.43` / `-7.14`), which looks alarming in isolation but is a measurement-resolution artifact, not instability. The encoder speed measurement (`sample_speed()`) can only represent speed in steps of $60000/(period_{ms} \times counts\_per\_rev) = 28.57$ RPM at $period_{ms}=1$. Since the true speed sits between two representable values, the reading flickers between its two nearest neighbors tick to tick, and that single-step jump (28.57 RPM) multiplied by $K_p$ shows up directly as the swing in `pwm_value`. It does not show up as visible speed oscillation (~3 RPM spread in the actual column).
