@@ -1,3 +1,5 @@
+#pragma once
+
 class Digital_out
 {
 public:

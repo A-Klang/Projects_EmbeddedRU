@@ -1,5 +1,8 @@
+#pragma once
+
 #include <digital_in.h>
 #include <digital_out.h>
+#include <analog_out.h>
 
 class Encoder
 {
@@ -10,15 +13,16 @@ class Encoder
         void sample_speed();
         int get_position();
         float get_speed();
-        int counter = 0;
-
+        void set_speed();
+        volatile int counter = 0;
+        volatile double ref_speed;
+        Analog_out AIN1;
+        Analog_out AIN2;
 
     private:
         Digital_in c1;
         Digital_in c2;
         Digital_out led;
-        Digital_out AIN1;
-        Digital_out AIN2;
         bool last_c1;
         volatile int pos;
         volatile int last_sample_pos;

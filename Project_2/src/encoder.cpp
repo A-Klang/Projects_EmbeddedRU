@@ -1,8 +1,10 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <encoder.h>
+#include <p_controller.h>
 #include <Arduino.h>
 #include <timer_msec.h>
+#include <analog_out.h>
 
 Encoder enc(4, 3, 5, 0, 1); // C2=PD3, C1=PD4, LED=PB5, AIN1 = PB0, AIN2 = PB1
 volatile uint8_t portd_history = 0xFF; // default is high because of pull-up
@@ -21,10 +23,9 @@ void Encoder::init() {
     led.init();
     AIN1.init();
     AIN2.init();
-    AIN1.set_lo();
-    AIN2.set_hi();
     last_c1 = c1.is_hi();
     pos = 0;
+    counter = 0;
 
     portd_history = PIND;
     PCMSK2 |= (1 << PCINT20); // Enable pin-change interrupt for PD4
@@ -67,13 +68,8 @@ ISR (PCINT2_vect)
 
 ISR(TIMER1_COMPA_vect) 
 {
+    enc.counter++;
     enc.sample_speed();
-    float v = enc.get_speed();
-    if  ((v > 0) && (v < 50.1)) {
-        enc.counter++;
-    }
-    if (v > 50.1)
-    {
-        Serial.println(enc.counter);
-    }
+    P_cont.update(enc.ref_speed, enc.get_speed());
+    enc.AIN1.set(P_cont.pwm_value);
 } 
