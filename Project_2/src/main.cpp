@@ -4,32 +4,40 @@
 #include <timer_msec.h>
 #include <p_controller.h>
 
+void print_data(unsigned long t_ms, double ref_speed, double actual_speed, double pwm_value) {
+  Serial.print(t_ms);
+  Serial.print(",");
+  Serial.print(ref_speed);
+  Serial.print(",");
+  Serial.print(actual_speed);
+  Serial.print(",");
+  Serial.println(pwm_value);
+}
+
 int main()
 {
 
   Serial.begin(115200);
   enc.init();
-  
+
   sei();
-  P_cont.set_Kp(10);
+  P_cont.set_Kp(40);
 
-  enc.ref_speed = 20;
-  // _delay_ms(2000);
-  // enc.ref_speed = 0; // Go to rest
-  // _delay_ms(2000);
-  // enc.ref_speed = 50; // Step
+  enc.ref_speed = 0;
+  bool stepped = false;
 
-  int last_print_pos = 0;
+  Serial.println("time_ms,ref_speed,actual_speed,pwm_value");
+
   while (1)
   {
-    if (enc.counter == 20){
-      int pos_now = enc.get_position();
-      int delta = pos_now - last_print_pos;
-      float display_rpm = ((float)delta / 20.0f) / 2100.0f * 60000.0f;
-      Serial.print(display_rpm);
-      Serial.print(",");
-      Serial.println(enc.last_pwm);
-      last_print_pos = pos_now;
+    unsigned long t = enc.ms_since_start;
+    if (!stepped && t >= 1000) {
+      enc.ref_speed = 50; // Step
+      stepped = true;
+    }
+
+    if (enc.counter == 10) {
+      print_data(t, enc.ref_speed, enc.get_speed(), enc.pwm_value);
       enc.counter = 0;
     }
   }

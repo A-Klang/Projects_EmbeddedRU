@@ -1,26 +1,29 @@
 #!/usr/bin/env python3
 """
-Capture the Nano's `actual_rpm,pwm_value` serial stream to a CSV file.
+Capture the Nano's `time_ms,ref_speed,actual_speed,pwm_value` serial stream
+(printed by print_data() in main.cpp) to a CSV file.
 
 Opening the serial port resets the Arduino Nano (DTR toggle), so this
-naturally re-triggers the firmware's boot-delay-then-step sequence -
-start capturing right when you run this script.
+naturally re-triggers the firmware's boot-then-step sequence - start
+capturing right when you run this script.
 
-Usage:
-    python3 capture_serial.py --out step_response.csv --seconds 10
-    python3 capture_serial.py --out load_response.csv --seconds 20 --port /dev/cu.usbserial-XXXX
-
-Each printed line is assumed to arrive on a fixed cadence (matching the
-firmware's print interval, 20ms by default) so a time column is added
-from the row index rather than relying on host-side timestamps.
+Edit the settings below, then just run:
+    python3 capture_serial.py
 """
-import argparse
-import csv
 import sys
 import time
 
 import serial
 import serial.tools.list_ports
+
+# --- Edit these, then run the script ---
+OUT_PATH = "Kp_40.csv"
+SECONDS = 27.0          # how long to capture (8 steps x 3s dwell for the open-loop staircase = 24s)
+PORT = None             # e.g. "/dev/cu.usbserial-110", or None to auto-detect
+BAUD = 115200
+# ----------------------------------------
+
+EXPECTED_HEADER = "time_ms,ref_speed,actual_speed,pwm_value"
 
 
 def find_port() -> str:
@@ -31,7 +34,7 @@ def find_port() -> str:
     ]
     if not candidates:
         sys.exit(
-            "No USB serial device found. Plug in the Nano, or pass --port explicitly "
+            "No USB serial device found. Plug in the Nano, or set PORT explicitly "
             "(see available ports with: python3 -m serial.tools.list_ports)"
         )
     if len(candidates) > 1:
@@ -40,53 +43,46 @@ def find_port() -> str:
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--out", required=True, help="Output CSV file path")
-    parser.add_argument("--seconds", type=float, default=10.0, help="How long to capture (default: 10s)")
-    parser.add_argument("--port", default=None, help="Serial port (default: auto-detect)")
-    parser.add_argument("--baud", type=int, default=115200, help="Baud rate (default: 115200)")
-    parser.add_argument(
-        "--print-interval-ms",
-        type=float,
-        default=20.0,
-        help="Firmware's print interval in ms, used to build the time column (default: 20)",
-    )
-    args = parser.parse_args()
+    port = PORT or find_port()
+    print(f"Opening {port} at {BAUD} baud (this will reset the Nano)...")
 
-    port = args.port or find_port()
-    print(f"Opening {port} at {args.baud} baud (this will reset the Nano)...")
-
-    rows = []
-    with serial.Serial(port, args.baud, timeout=1) as ser:
-        # Let the reset settle and flush whatever partial garbage line follows it.
-        time.sleep(0.5)
+    lines = []
+    with serial.Serial(port, BAUD, timeout=1) as ser:
+        time.sleep(2.0)  # let the bootloader reset settle before the firmware starts printing
         ser.reset_input_buffer()
 
         start = time.monotonic()
-        while time.monotonic() - start < args.seconds:
-            line = ser.readline().decode("utf-8", errors="ignore").strip()
-            if not line:
+        while time.monotonic() - start < SECONDS:
+            raw = ser.readline().decode("utf-8", errors="ignore").strip()
+            if not raw:
                 continue
-            parts = line.split(",")
-            if len(parts) != 2:
-                continue  # skip anything that isn't "actual,pwm"
+
+            if raw == EXPECTED_HEADER:
+                if not lines:
+                    lines.append(raw)
+                continue
+
+            parts = raw.split(",")
+            if len(parts) != 4:
+                continue  # skip boot noise / partial lines
             try:
-                actual_rpm, pwm_value = float(parts[0]), float(parts[1])
+                [float(p) for p in parts]
             except ValueError:
                 continue
-            t_s = len(rows) * args.print_interval_ms / 1000.0
-            rows.append((t_s, actual_rpm, pwm_value))
-            print(f"{t_s:6.2f}s  actual={actual_rpm:7.2f}  pwm={pwm_value:7.2f}")
 
-    if not rows:
+            lines.append(raw)
+            print(raw)
+
+    if len(lines) <= 1:
         sys.exit("No valid data captured - check wiring/port/baud and try again.")
 
-    with open(args.out, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["time_s", "actual_rpm", "pwm_value"])
-        writer.writerows(rows)
+    if lines[0] != EXPECTED_HEADER:
+        lines.insert(0, EXPECTED_HEADER)
 
-    print(f"\nSaved {len(rows)} rows to {args.out}")
+    with open(OUT_PATH, "w", newline="") as f:
+        f.write("\n".join(lines) + "\n")
+
+    print(f"\nSaved {len(lines) - 1} rows to {OUT_PATH}")
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <timer_msec.h>
 
-P_controller P_cont(1);
+P_controller P_cont(0.1);
 
 P_controller::P_controller(double Kp) {
     K_p = Kp;

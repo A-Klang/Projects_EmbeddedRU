@@ -11,7 +11,7 @@ void Timer_usec:: init(uint16_t period_us, double duty_cycle){
     TCCR0B = 0;
     TCNT0 = 0; // Initialize counter value
     OCR0A = (uint8_t) ticks;
-    OCR0B = (uint8_t)((double)OCR0A * duty_cycle / 100.0);
+    OCR0B = (uint8_t)((double)OCR0A * duty_cycle / 255.0);
 
 
     TCCR0A |= (1<<WGM01);
@@ -23,5 +23,10 @@ void Timer_usec:: init(uint16_t period_us, double duty_cycle){
 }
 
 void Timer_usec :: set_duty_cycle(double duty_cycle) {
-    OCR0B = (uint8_t)((double)OCR0A * duty_cycle / 100.0);
+    double ticks = (double)OCR0A * duty_cycle / 255.0;
+    // OCR0B == OCR0A makes both compare matches fire on the same tick; COMPA
+    // sets the pin high and COMPB clears it microseconds later, collapsing the
+    // pulse to ~0% instead of 100%.
+    if (ticks > OCR0A - 1) ticks = OCR0A - 1;
+    OCR0B = (uint8_t)ticks;
 }
