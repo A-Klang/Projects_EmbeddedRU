@@ -14,7 +14,7 @@ void Timer_usec:: init(uint16_t period_us, double duty_cycle){
     OCR0B = (uint8_t)((double)OCR0A * duty_cycle / 100.0);
 
 
-    TCCR0B |= (1<<WGM01);
+    TCCR0A |= (1<<WGM01);
     TIMSK0 |= (1<<OCIE0A);
     TIMSK0 |= (1<<OCIE0B);
     TCCR0B |= (1<<CS01); //TODO: Make sure these are correct ^^

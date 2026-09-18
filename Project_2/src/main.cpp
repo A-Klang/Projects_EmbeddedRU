@@ -11,11 +11,13 @@ int main()
   enc.init();
   
   sei();
-  P_cont.set_Kp(1);
+  P_cont.set_Kp(10);
 
-  enc.ref_speed = 0; // Start at rest
-  _delay_ms(2000);
-  enc.ref_speed = 50; // Step
+  enc.ref_speed = 20;
+  // _delay_ms(2000);
+  // enc.ref_speed = 0; // Go to rest
+  // _delay_ms(2000);
+  // enc.ref_speed = 50; // Step
 
   int last_print_pos = 0;
   while (1)
