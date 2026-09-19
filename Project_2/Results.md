@@ -101,6 +101,6 @@ Measured by having each ISR track its own worst-case duration via TCNT0/TCNT1, p
 The PWM pin is toggled in software from the Timer0 ISR rather than by a hardware compare pin, so its timing depends on the Timer1 ISR not blocking it for too long. Since the Timer1 ISR (196µs) sometimes runs longer than one PWM period (120µs), a PWM edge is occasionally missed, which is why the measured frequency (7716Hz) is a bit below the calculated 8.33kHz.
 
 ### Video
-Video: https://youtube.com/shorts/5UvKSNQ_zbs?feature=share
+Video: https://youtube.com/shorts/JXJkAuEihqM?feature=share
 ### Github Repo
-Repo: 
+Repo: https://github.com/A-Klang/Projects_EmbeddedRU
