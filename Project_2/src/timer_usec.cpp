@@ -17,7 +17,7 @@ void Timer_usec:: init(uint16_t period_us, double duty_cycle){
     TCCR0A |= (1<<WGM01);
     TIMSK0 |= (1<<OCIE0A);
     TIMSK0 |= (1<<OCIE0B);
-    TCCR0B |= (1<<CS01); //TODO: Make sure these are correct ^^
+    TCCR0B |= (1<<CS01);
 
 
 }

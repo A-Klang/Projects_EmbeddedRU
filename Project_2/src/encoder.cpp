@@ -13,7 +13,7 @@ Timer_msec timer;
 
 Encoder::Encoder(uint8_t c1_pin, uint8_t c2_pin, uint8_t led_pin, uint8_t AIN1_port, uint8_t AIN2_port)
 : c1(c1_pin), c2(c2_pin), led(led_pin), pwm_pin(AIN1_port), dir_pin(AIN2_port), last_c1(false), 
-pos(0), last_sample_pos(0), speed_rpm(0) {}
+pos(0), speed_rpm(0) {}
 
 
 void Encoder::init() {
@@ -52,12 +52,11 @@ void Encoder::update() {
 }
 
 void Encoder::sample_speed() {
-    if (counter2 != 10) return; // wait for the full 10-tick window (must match ISR's counter2 threshold) for finer resolution
     int now_pos = pos;
-    int delta = now_pos - last_sample_pos;
-    speed_rpm = (((float)delta / (period_ms * 10.0f)) / counts_per_rev) * 60000.0f;
-    last_sample_pos = now_pos;
-    counter2 = 0;
+    int delta = now_pos - window_pos[tick]; // window_pos[tick] is the position `window_ticks`(10ms) ticks ago
+    window_pos[tick] = now_pos;
+    tick = (tick + 1) % window_ticks;
+    speed_rpm = (((float)delta / (period_ms * window_ticks)) / counts_per_rev) * 60000.0f;
 }
 
 
@@ -72,26 +71,18 @@ ISR (PCINT2_vect)
 ISR(TIMER1_COMPA_vect) 
 {
     enc.counter++;
-    enc.counter2++;
     enc.ms_since_start++;
-    if (enc.counter2 == 10) {
-        enc.sample_speed();
-        if (!enc.open_loop) {
-            enc.pwm_value = P_cont.update(enc.ref_speed, enc.get_speed());
-        }
-    }
+    enc.sample_speed();
+    enc.pwm_value = P_cont.update(enc.ref_speed, enc.get_speed());
 
-    if (!enc.open_loop) {
-        // Forward: dir_pin low, so the bridge sees (0,0)=coast / (1,0)=drive and
-        // drive time tracks the commanded value directly.
-        // Reverse: dir_pin high gives (0,1)=drive / (1,1)=brake, so drive time is
-        // the LOW time - the command has to be inverted to stay monotonic.
-        if (enc.pwm_value >= 0) {
-            enc.dir_pin.set_lo();
-            enc.pwm_pin.set(enc.pwm_value);
-        } else {
-            enc.dir_pin.set_hi();
-            enc.pwm_pin.set(255.0 - fabs(enc.pwm_value));
-        }
+    if (enc.pwm_value >= 0) 
+    {
+        enc.dir_pin.set_lo();
+        enc.pwm_pin.set(enc.pwm_value);
+    } 
+    else 
+    {
+        enc.dir_pin.set_hi();
+        enc.pwm_pin.set(255.0 - fabs(enc.pwm_value));
     }
-} 
+}

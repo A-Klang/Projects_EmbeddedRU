@@ -11,8 +11,8 @@ import csv
 import matplotlib.pyplot as plt
 
 # --- Edit these, then run the script ---
-CSV_PATH = "Kp_40.csv"
-TITLE = "Kp_40"          # e.g. "Step response (Kp=3, ref 0->30 RPM)", or None for no title
+CSV_PATH = "test_new_build.csv"
+TITLE = "Two steps"          # e.g. "Step response (Kp=3, ref 0->30 RPM)", or None for no title
 OUT_PATH = None        # e.g. "step_response.png" to save instead of showing, or None to just show it
 # ----------------------------------------
 

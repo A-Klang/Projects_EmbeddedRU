@@ -17,8 +17,8 @@ import serial
 import serial.tools.list_ports
 
 # --- Edit these, then run the script ---
-OUT_PATH = "Kp_40.csv"
-SECONDS = 27.0          # how long to capture (8 steps x 3s dwell for the open-loop staircase = 24s)
+OUT_PATH = "test_new_build.csv"
+SECONDS = 15.0          # how long to capture (8 steps x 3s dwell for the open-loop staircase = 24s)
 PORT = None             # e.g. "/dev/cu.usbserial-110", or None to auto-detect
 BAUD = 115200
 # ----------------------------------------

@@ -14,5 +14,4 @@ class P_controller
         double K_p;
 };
 
-// The single p_controller instance. Defined in p_controller.cpp
 extern P_controller P_cont;

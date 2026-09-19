@@ -15,14 +15,12 @@ class Encoder
         float get_speed();
         void set_speed();
         volatile int counter = 0;
-        volatile int counter2 = 0;
-        volatile unsigned long ms_since_start = 0; // increments once per Timer1 tick (period_ms); millis() doesn't work here since main() never calls the Arduino core's init()
-        volatile bool open_loop = false; // when true, the ISR still measures speed but leaves dir_pin/pwm_pin alone so main() can drive them directly
+        volatile unsigned long ms_since_start = 0; // increments once per Timer1 tick (period_ms)
         volatile double ref_speed;
         volatile double last_pwm = 0; // most recent PWM value returned by P_cont.update(), for reporting
         volatile double pwm_value = 0;
-        Analog_out pwm_pin; // was AIN1 - drives H-bridge
-        Digital_out dir_pin; // was AIN2 - fixed direction level, not PWM
+        Analog_out pwm_pin; // was AIN1, drives H-bridge
+        Digital_out dir_pin; // was AIN2, fixed direction level, not PWM
 
 
     private:
@@ -30,15 +28,14 @@ class Encoder
         Digital_in c2;
         Digital_out led;
         bool last_c1;
-        volatile int pos;
-        volatile int last_sample_pos;
-        volatile float speed_rpm;
-
         static constexpr float period_ms = 1;
         static constexpr float counts_per_rev = 2100.0;
+        static constexpr uint8_t window_ticks = 10;
+
+        volatile int pos;
+        volatile int window_pos[window_ticks] = {};
+        volatile uint8_t tick = 0;
+        volatile float speed_rpm;
 };
 
-// The single encoder instance. Defined in encoder.cpp (pin wiring lives
-// there, next to the interrupt setup it belongs with) so ISR(PCINT2_vect)
-// can reach it directly by name, with no runtime pointer indirection.
 extern Encoder enc;

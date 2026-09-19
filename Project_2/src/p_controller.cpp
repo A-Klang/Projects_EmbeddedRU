@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <timer_msec.h>
 
-P_controller P_cont(0.1);
+P_controller P_cont(40);
 
 P_controller::P_controller(double Kp) {
     K_p = Kp;
@@ -12,8 +12,4 @@ P_controller::P_controller(double Kp) {
 
 double P_controller::update(double ref, double actual) {
     return K_p * (ref - actual);
-}
-
-void P_controller::set_Kp(double Kp) {
-    K_p = Kp;
 }
