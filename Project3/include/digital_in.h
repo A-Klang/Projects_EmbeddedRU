@@ -1,5 +1,6 @@
-#include <stdio.h>
 #pragma once
+#include <stdio.h>
+#include <stdint.h>
 
 class Digital_in
 {

@@ -3,3 +3,8 @@
 
 # PlatformIO
 .pio/
+
+# Project3: local plotting tool and generated images (PNGs go in the report)
+Project3/tools/
+Project3/logs/*.png
+out/

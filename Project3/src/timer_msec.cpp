@@ -4,7 +4,7 @@
     
 Timer_msec::Timer_msec(){}
 
-void Timer_msec:: init(int period_ms, int duty_cycle = 50){
+void Timer_msec:: init(int period_ms, int duty_cycle){
     TCCR1A = 0; // Setting timer1 to normal operation
     TCCR1B = 0;
     TCNT1 = 0; // Initialize counter value

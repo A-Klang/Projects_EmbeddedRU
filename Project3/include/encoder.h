@@ -7,15 +7,18 @@
 class Encoder
 {
     public:
-        Encoder(uint8_t c1_pin, uint8_t c2_pin, uint8_t led_pin, uint8_t AIN1_port, uint8_t AIN2_port);
+        Encoder(uint8_t c1_pin, uint8_t c2_pin, uint8_t AIN1_port, uint8_t AIN2_port);
         void init();
         void update(); // called from ISR(PCINT2_vect), not meant to be called directly
         void sample_speed();
         int get_position();
         float get_speed();
         void set_speed();
+        void stop_motor();
+        void reset_position();
         volatile int counter = 0;
         volatile unsigned long ms_since_start = 0; // increments once per Timer1 tick (period_ms)
+        volatile bool control_tick = false; // set by timer 1 isr every ms, cleared by main loop
         volatile double ref_speed;
         volatile double last_pwm = 0; // most recent PWM value returned by P_cont.update(), for reporting
         volatile double pwm_value = 0;
@@ -26,7 +29,6 @@ class Encoder
     private:
         Digital_in c1;
         Digital_in c2;
-        Digital_out led;
         bool last_c1;
         static constexpr float period_ms = 1;
         static constexpr float counts_per_rev = 2100.0;

@@ -13,3 +13,7 @@ P_controller::P_controller(double Kp) {
 double P_controller::update(double ref, double actual) {
     return K_p * (ref - actual);
 }
+
+void P_controller::set_Kp(double Kp) {
+    K_p = Kp;
+}
