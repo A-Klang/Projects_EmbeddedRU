@@ -13,3 +13,7 @@ void Digital_in::init() {
 bool Digital_in::is_hi() {
     return (PIND & pinMask) != 0;
 }
+
+bool Digital_in::is_lo() {
+    return (PIND & pinMask) == 0;
+}

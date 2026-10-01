@@ -8,4 +8,6 @@ class State {
         virtual void on_exit() {}
         virtual void on_step() {}
         virtual void on_reset() {}
+        virtual void on_fault() {}
+        virtual void on_set_operational() {}
 };

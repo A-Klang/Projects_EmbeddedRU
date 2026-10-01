@@ -27,6 +27,10 @@ void Timer_usec :: set_duty_cycle(double duty_cycle) {
     // OCR0B == OCR0A makes both compare matches fire on the same tick; COMPA
     // sets the pin high and COMPB clears it microseconds later, collapsing the
     // pulse to ~0% instead of 100%.
-    if (ticks > OCR0A - 1) ticks = OCR0A - 1;
+    if (ticks >= OCR0A) {
+        TIMSK0 &= ~(1 << OCIE0B);
+        return;
+    }
+    TIMSK0 |= (1 << OCIE0B);
     OCR0B = (uint8_t)ticks;
 }

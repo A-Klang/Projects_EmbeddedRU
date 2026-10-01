@@ -23,3 +23,11 @@ void Context::step() {
 void Context::reset() {
     state_ -> on_reset();
 }
+
+void Context::fault() {
+    state_ -> on_fault();
+}
+
+void Context::set_operational() {
+    state_ -> on_set_operational();
+}

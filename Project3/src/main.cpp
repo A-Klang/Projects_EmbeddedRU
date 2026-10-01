@@ -2,6 +2,7 @@
 #include <encoder.h>
 #include <context.h>
 #include <nmt_states.h>
+#include <util/atomic.h>
 
 void print_data(unsigned long t_ms, double ref_speed, double actual_speed, double pwm_value) {
   Serial.print(t_ms);
@@ -31,14 +32,22 @@ int main() {
       if (cmd == 'r') {
         context.reset();
       }
+      else if (cmd == 'o') {
+        context.set_operational();
+      }
+    }
+
+    if (enc.has_fault()) {
+      context.fault();
     }
 
     if (enc.control_tick) {
       enc.control_tick = false;
       context.step();
     }
-
-    unsigned long t = enc.ms_since_start;
+    //enc.ref_speed = 60;
+    unsigned long t;
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { t = enc.ms_since_start; }
     if (t >= 8000) {
       enc.ref_speed = 60;
     }

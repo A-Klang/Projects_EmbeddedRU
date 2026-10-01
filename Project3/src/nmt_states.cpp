@@ -7,6 +7,7 @@
 Initialization initialization;
 Operational operational;
 Digital_out status_led(5); // PB5 = nano led
+Stopped stopped;
 
 void Initialization::on_entry() {
     enc.stop_motor();
@@ -46,4 +47,28 @@ void Operational::on_exit() {
 
 void Operational::on_reset() {
     context_->transition_to(&initialization);
+}
+
+void Operational::on_fault() {
+    context_->transition_to(&stopped);
+}
+
+void Stopped::on_entry() {
+    enc.brake();
+    blink_ticks = 0;
+}
+
+void Stopped::on_step() {
+    if (++blink_ticks >= 250) { //Toggle every 250ms = 2hz blink
+        blink_ticks = 0;
+        status_led.toggle();
+    }
+}
+
+void Stopped::on_reset() {
+    context_->transition_to(&initialization);
+}
+
+void Stopped::on_set_operational() {
+    context_->transition_to(&operational);
 }

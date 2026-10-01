@@ -10,4 +10,6 @@ class Context {
         void transition_to(State* next);
         void step();
         void reset();
+        void fault();
+        void set_operational();
 };

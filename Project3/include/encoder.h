@@ -7,7 +7,7 @@
 class Encoder
 {
     public:
-        Encoder(uint8_t c1_pin, uint8_t c2_pin, uint8_t AIN1_port, uint8_t AIN2_port);
+        Encoder(uint8_t c1_pin, uint8_t c2_pin, uint8_t AIN1_port, uint8_t AIN2_port, uint8_t flt_pin);
         void init();
         void update(); // called from ISR(PCINT2_vect), not meant to be called directly
         void sample_speed();
@@ -16,6 +16,8 @@ class Encoder
         void set_speed();
         void stop_motor();
         void reset_position();
+        bool has_fault(); // True while FLT is low
+        void brake();
         volatile int counter = 0;
         volatile unsigned long ms_since_start = 0; // increments once per Timer1 tick (period_ms)
         volatile bool control_tick = false; // set by timer 1 isr every ms, cleared by main loop
@@ -29,6 +31,7 @@ class Encoder
     private:
         Digital_in c1;
         Digital_in c2;
+        Digital_in flt;
         bool last_c1;
         static constexpr float period_ms = 1;
         static constexpr float counts_per_rev = 2100.0;
