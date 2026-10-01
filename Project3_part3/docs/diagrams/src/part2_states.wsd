@@ -1,0 +1,21 @@
+@startuml part2_states
+
+title Fault detection Part 2
+[*] --> Initialization
+
+state Initialization : entry / motor off, reset position, Kp = 40, ref = 0, restart clock
+state Initialization : exit / send Boot-up message
+
+state Operational : entry / LED on
+state Operational : do / every 1 ms: u = controller.update(ref, speed), set PWM and direction
+state Operational : exit / motor off
+
+state Stopped : do / motor brake, LED blink 2Hz
+
+Initialization -down-> Operational
+Operational -up-> Initialization : reset
+Stopped -right-> Operational : o
+Stopped -up-> Initialization : reset
+Operational -right-> Stopped : fault
+
+@enduml
