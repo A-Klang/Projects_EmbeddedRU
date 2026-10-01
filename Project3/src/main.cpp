@@ -45,15 +45,15 @@ int main() {
       enc.control_tick = false;
       context.step();
     }
-    //enc.ref_speed = 60;
+    enc.ref_speed = 60;
     unsigned long t;
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { t = enc.ms_since_start; }
-    if (t >= 8000) {
-      enc.ref_speed = 60;
-    }
-    else if(t >= 1000) {
-      enc.ref_speed = 40;
-    }
+    // if (t >= 8000) {
+    //   enc.ref_speed = 60;
+    // }
+    // else if(t >= 1000) {
+    //   enc.ref_speed = 40;
+    // }
 
     if (enc.counter >= 10) {
       enc.counter = 0;
