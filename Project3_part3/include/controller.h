@@ -1,6 +1,6 @@
 #pragma once
 
-class controller {
+class Controller {
     public:
-        double update(double ref, double actual);
+        virtual double update(double ref, double actual);
 };
