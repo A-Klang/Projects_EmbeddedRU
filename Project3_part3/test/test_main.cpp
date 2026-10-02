@@ -3,30 +3,65 @@
 #include <controllers.h>
 #include <Arduino.h>
 
-// Assert PI controller is used, by checking what on_step update call uses
-// Assert P controller is not used
-void test_normal_flow(void) {
-    PI_controller pi;
-    
-    //TEST_ASSERT_DOUBLE_WITHIN(0.01, 40.04, pi.update(41, 40));
+void test_integral_accumulates(void) {
+    TEST_ASSERT_FLOAT_WITHIN(0.01, 88, controller->update(2,0));
+    TEST_ASSERT_FLOAT_WITHIN(0.01, 96, controller->update(2,0));
+    TEST_ASSERT_FLOAT_WITHIN(0.01, 104, controller->update(2,0));
+
+    controller->reset();
 }
 
+void test_zero_err_holds(void) {
+    controller->update(2,0);
+    controller->update(2,0);
+    controller->update(2,0);
+    TEST_ASSERT_FLOAT_WITHIN(0.01, 24, controller->update(3, 3));
+    TEST_ASSERT_FLOAT_WITHIN(0.01, 24, controller->update(3, 3));
 
+    controller->reset();
+}
 
-// Assert P controller is used
-// Assert PI controller is not used
+void test_overshooting(void) {
+    TEST_ASSERT_FLOAT_WITHIN(0.01, -88, controller->update(5,7));
 
-// Is the steady-state error ~0?
+    controller->reset();
+}
+
+void test_excessive_ref_speed(void) {
+    TEST_ASSERT_FLOAT_WITHIN(0.01, 255, controller->update(100,0));
+    TEST_ASSERT_FLOAT_WITHIN(0.01, 255, controller->update(100,0));
+    TEST_ASSERT_FLOAT_WITHIN(0.01, 255, controller->update(100,0));
+
+    TEST_ASSERT_FLOAT_WITHIN(0.01, -255, controller->update(-100,0));
+    TEST_ASSERT_FLOAT_WITHIN(0.01, -255, controller->update(-100,0));
+    TEST_ASSERT_FLOAT_WITHIN(0.01, -255, controller->update(-100,0));
+
+    controller->reset();
+}
+
+void test_negative_speed(void) {
+    TEST_ASSERT_FLOAT_WITHIN(0.01, -88, controller->update(-2,0));
+
+    controller->reset();
+}
+
+void test_anti_windup(void) {
+    for (int i = 0; i < 100; i++) controller->update(100, 0);
+    TEST_ASSERT_FLOAT_WITHIN(0.01, 88, controller->update(2, 0));
+    controller->reset();
+
+}
 
 
 int main()
 {
- // NOTE!!! Wait for >2 secs
- // if board doesn't support software reset via Serial.DTR/RTS
+ UNITY_BEGIN();
+ RUN_TEST(test_integral_accumulates);
+ RUN_TEST(test_zero_err_holds);
+ RUN_TEST(test_overshooting);
+ RUN_TEST(test_negative_speed);
+ RUN_TEST(test_excessive_ref_speed);
+ RUN_TEST(test_anti_windup);
 
- UNITY_BEGIN(); // IMPORTANT LINE!
- RUN_TEST(test_normal_flow);
-
-
- UNITY_END(); // stop unit testing
+ UNITY_END(); 
 }

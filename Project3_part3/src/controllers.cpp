@@ -1,27 +1,29 @@
 #include <controllers.h>
 
-P_controller P;
-PI_controller PI;
-Controller* controller = &PI;
+P_controller p;
+PI_controller pi;
+Controller* controller = &pi;
 
 double P_controller::update(double ref, double actual) {
     return Kp * (ref - actual);
 }
 
-void P_controller::set_Kp(double K_p) {
-    Kp = K_p;
+void P_controller::reset() {
+    return;
 }
 
 double PI_controller::update(double ref, double actual) {
-    //TODO:
-    double E = 0;
-    return Kp * ((ref - actual) + ((1/Ti)*E));
+    double e = ref - actual;
+    double E_new = E + e * dt;
+    double u = Kp * (e + E_new / Ti);
+
+    if (u > 255) return 255;
+    if (u < -255) return -255;
+
+    E = E_new;
+    return u;
 }
 
-void PI_controller::set_Kp(double K_p) {
-    Kp = K_p;
-}
-
-void PI_controller::set_Ti(double T_i) {
-    Ti = T_i;
+void PI_controller::reset() {
+    E = 0;
 }

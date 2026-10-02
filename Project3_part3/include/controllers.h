@@ -4,16 +4,19 @@
 class P_controller : public Controller {
     public:
         double update(double ref, double actual) override;
-        void set_Kp(double K_p) override;
+        void reset() override;
 };
 
 class PI_controller : public Controller {
     public:
         double update(double ref, double actual) override;
-        void set_Kp(double K_p) override;
-        void set_Ti(double T_i) override;
+        void reset() override;
+
+    private:
+        double E = 0;
+        double dt = 0.001;
 };
 
-extern P_controller P;
-extern PI_controller PI;
+extern P_controller p;
+extern PI_controller pi;
 extern Controller* controller;

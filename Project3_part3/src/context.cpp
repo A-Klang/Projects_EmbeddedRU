@@ -31,3 +31,19 @@ void Context::fault() {
 void Context::set_operational() {
     state_ -> on_set_operational();
 }
+
+void Context::set_preoperational() {
+    state_ -> on_set_preoperational();
+}
+
+void Context::set_Kp(double K_p) {
+    state_ -> on_set_Kp(K_p);
+}
+
+void Context::set_Ti(double T_i) {
+    state_ -> on_set_Ti(T_i);
+}
+
+void Context::set_control_law(char law) {
+    state_ -> on_set_control_law(law);
+}

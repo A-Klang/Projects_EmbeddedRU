@@ -14,8 +14,8 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-LOG_FILE = "logs/part2_faultDet_wire_backtoOperational.csv"   # relative to the Project3 folder
-TITLE ="Part 2: fault detection using manual low"   # or None for no title
+LOG_FILE = "logs/test.csv"   # relative to the Project3 folder
+TITLE ="Part 4: Integral term T_i = 0.1"   # or None for no title
 PWM_LIMIT = 255   # Analog_out::set() clamps the magnitude to this, so the plot shows what is actually applied
 
 

@@ -3,6 +3,7 @@
 #include <context.h>
 #include <nmt_states.h>
 #include <util/atomic.h>
+#include <string.h>
 
 void print_data(unsigned long t_ms, double ref_speed, double actual_speed, double pwm_value) {
   Serial.print(t_ms);
@@ -35,7 +36,27 @@ int main() {
       else if (cmd == 'o') {
         context.set_operational();
       }
-    }
+      else if (cmd == 'p') {
+        context.set_preoperational();
+      }
+      else if (cmd == 'k') {
+        String input = Serial.readStringUntil('\n');
+        input.trim();
+        double kp = input.toDouble();
+        context.set_Kp(kp);
+      }
+      else if (cmd == 't') {
+        String input = Serial.readStringUntil('\n');
+        input.trim();
+        double ti = input.toDouble();
+        context.set_Ti(ti);
+        } 
+      else if (cmd == 'l') {
+        String input = Serial.readStringUntil('\n');
+        input.trim();
+        context.set_control_law(*input.c_str());
+      }
+      }
 
     if (enc.has_fault()) {
       context.fault();
@@ -45,7 +66,7 @@ int main() {
       enc.control_tick = false;
       context.step();
     }
-    enc.ref_speed = 60;
+    enc.ref_speed = 30;
     unsigned long t;
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { t = enc.ms_since_start; }
     // if (t >= 8000) {

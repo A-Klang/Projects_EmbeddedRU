@@ -1,11 +1,11 @@
 #pragma once
+#include <math.h>
 
 class Controller {
     public:
         virtual double update(double ref, double actual);
-        virtual void set_Kp(double K_p);
-        virtual void set_Ti(double T_i);
+        virtual void reset();
 
-        double Kp = 40;
-        double Ti = 1;
+        double Kp = 80;
+        double Ti = 0.1;
 };

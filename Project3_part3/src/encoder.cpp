@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include <timer_msec.h>
 #include <analog_out.h>
+#include <util/atomic.h>
+
 
 Encoder enc(4, 3, 0, 1, 2); // C2=PD3, C1=PD4, AIN1 = PB0, AIN2 = PB1, FLT = PD2
 volatile uint8_t portd_history = 0xFF; // default is high because of pull-up
@@ -46,7 +48,9 @@ void Encoder::brake() {
 }
 
 float Encoder::get_speed() {
-    return speed_rpm;
+    float s;
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {s = speed_rpm;}
+    return s;
 }
 
 void Encoder::stop_motor() {

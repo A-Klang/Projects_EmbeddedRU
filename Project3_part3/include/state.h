@@ -10,4 +10,8 @@ class State {
         virtual void on_reset() {}
         virtual void on_fault() {}
         virtual void on_set_operational() {}
+        virtual void on_set_preoperational() {}
+        virtual void on_set_Kp(double) {};
+        virtual void on_set_Ti(double) {};
+        virtual void on_set_control_law(char) {};
 };
