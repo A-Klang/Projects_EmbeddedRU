@@ -6,8 +6,7 @@ title Fault detection Part 2
 state Initialization : entry / motor off, reset position, Kp = 40, ref = 0, restart clock
 state Initialization : exit / send Boot-up message
 
-state PreOperational : on entry / 
-state PreOperational : do / LED blink 1Hz, set KP, set Ti, choose P or Pi
+state PreOperational : do / LED blink 1Hz, set Kp, set Ti, choose P or Pi
 
 state Operational : entry / LED on
 state Operational : do / every 1 ms: u = controller.update(ref, speed), set PWM and direction
