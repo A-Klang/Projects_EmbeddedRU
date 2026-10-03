@@ -45,15 +45,18 @@ int main() {
       enc.control_tick = false;
       context.step();
     }
-    enc.ref_speed = 60;
     unsigned long t;
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { t = enc.ms_since_start; }
-    // if (t >= 8000) {
-    //   enc.ref_speed = 60;
-    // }
-    // else if(t >= 1000) {
-    //   enc.ref_speed = 40;
-    // }
+    // Test profile, timed from the last (re)boot: 0 RPM until 1s, 40 RPM until 8s, then 60 RPM
+    if (t >= 8000) {
+      enc.ref_speed = 60;
+    }
+    else if (t >= 1000) {
+      enc.ref_speed = 40;
+    }
+    else {
+      enc.ref_speed = 0;
+    }
 
     if (enc.counter >= 10) {
       enc.counter = 0;

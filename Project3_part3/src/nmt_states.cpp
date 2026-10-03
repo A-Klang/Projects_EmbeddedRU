@@ -4,9 +4,10 @@
 #include <controller.h>
 #include <controllers.h>
 #include <Arduino.h>
+#include <util/atomic.h>
 
 Initialization initialization;
-Operational operational;
+Operational operational(&pi); // controller is passed to the motor controller, switched in PreOperational
 Digital_out status_led(5); // PB5 = nano led
 Stopped stopped;
 PreOperational preoperational;
@@ -49,12 +50,19 @@ void PreOperational::on_step() {
 }
 
 void PreOperational::on_set_Kp(double K_p) {
-    controller->Kp = K_p;
+    // Kp goes to the selected controller, so P and PI can keep their own tuning
+    operational.get_controller()->Kp = K_p;
+    Serial.print(operational.get_controller() == &pi ? "PI" : "P");
+    Serial.print(" Kp set to ");
+    Serial.println(K_p);
 }
 
 void PreOperational::on_set_Ti(double T_i) {
+    // Ti is only used by the PI controller, so it is set there whichever law is selected
     if (T_i > 0) {
-        controller->Ti = T_i;
+        pi.Ti = T_i;
+        Serial.print("PI Ti set to ");
+        Serial.println(T_i);
     }
 }
 
@@ -72,21 +80,23 @@ void PreOperational::on_fault() {
 
 void PreOperational::on_set_control_law(char law) {
     if (law == 'i') {
-        controller = &pi;
+        operational.set_controller(&pi);
+        Serial.println("Control law: PI");
     }
     else {
-        controller = &p;
+        operational.set_controller(&p);
+        Serial.println("Control law: P");
     }
 }
 
 void Operational::on_entry() {
     status_led.set_hi();
-    controller->reset();
+    controller_->reset();
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { entry_ms = enc.ms_since_start; }
 }
 
 void Operational::on_step() {
-    //enc.pwm_value = P_cont.update(enc.ref_speed, enc.get_speed());
-    enc.pwm_value = controller->update(enc.ref_speed, enc.get_speed());
+    enc.pwm_value = controller_->update(enc.ref_speed, enc.get_speed());
 
     if (enc.pwm_value >= 0) {
         enc.dir_pin.set_lo();

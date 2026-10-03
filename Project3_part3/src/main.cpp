@@ -66,15 +66,18 @@ int main() {
       enc.control_tick = false;
       context.step();
     }
-    enc.ref_speed = 30;
     unsigned long t;
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { t = enc.ms_since_start; }
-    // if (t >= 8000) {
-    //   enc.ref_speed = 60;
-    // }
-    // else if(t >= 1000) {
-    //   enc.ref_speed = 40;
-    // }
+
+    // Load test profile, timed from entering Operational: 0 RPM until 1s, then constant 40 RPM.
+    // The step test used 0 RPM until 1s, 40 RPM until 8s, then 60 RPM.
+    unsigned long t_op = t - operational.entry_ms;
+    if (t_op >= 1000) {
+      enc.ref_speed = 40;
+    }
+    else {
+      enc.ref_speed = 0;
+    }
 
     if (enc.counter >= 10) {
       enc.counter = 0;

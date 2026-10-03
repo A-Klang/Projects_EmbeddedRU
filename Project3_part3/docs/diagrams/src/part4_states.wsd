@@ -1,28 +1,33 @@
-@startuml part2_states
+@startuml part4_states
 
-title Fault detection Part 2
+title Motor controller node: NMT state behaviour (Part 4)
 [*] --> Initialization
 
-state Initialization : entry / motor off, reset position, Kp = 40, ref = 0, restart clock
+state Initialization : entry / motor off, reset position, ref = 0, restart clock
 state Initialization : exit / send Boot-up message
 
-state PreOperational : do / LED blink 1Hz, set Kp, set Ti, choose P or Pi
+state PreOperational : entry / reset blink counter
+state PreOperational : do / LED blink 1 Hz
+state PreOperational : set_Kp(Kp) (k) / selected controller.Kp = Kp
+state PreOperational : set_Ti(Ti) (t) [Ti > 0] / PI.Ti = Ti
+state PreOperational : set_control_law(law) (l) / Operational controller = PI if law = i, else P
 
-state Operational : entry / LED on
+state Operational : entry / LED on, controller.reset(), store entry time
 state Operational : do / every 1 ms: u = controller.update(ref, speed), set PWM and direction
 state Operational : exit / motor off
 
-state Stopped : do / motor brake, LED blink 2Hz
+state Stopped : entry / motor brake, reset blink counter
+state Stopped : do / LED blink 2 Hz
 
-Operational -right-> Stopped : fault
-Operational -up-> Initialization : reset
-Stopped -left-> Operational : o
-Stopped -up-> Initialization : reset
-Initialization -down-> PreOperational : boot-up
-PreOperational -down-> Operational : o
-PreOperational -right-> Stopped : fault
-PreOperational -up-> Initialization : reset
-Operational -up-> PreOperational : p
-Stopped -left-> PreOperational : p
+Initialization -down-> PreOperational
+PreOperational -up-> Initialization : reset (r)
+PreOperational -down-> Operational : set_operational (o)
+PreOperational -right-> Stopped : fault [FLT low]
+Operational -up-> PreOperational : set_preoperational (p)
+Operational -up-> Initialization : reset (r)
+Operational -right-> Stopped : fault [FLT low]
+Stopped -left-> PreOperational : set_preoperational (p)
+Stopped -left-> Operational : set_operational (o)
+Stopped -up-> Initialization : reset (r)
 
 @enduml

@@ -10,7 +10,8 @@ state Operational : entry / LED on
 state Operational : do / every 1 ms: u = controller.update(ref, speed), set PWM and direction
 state Operational : exit / motor off
 
-state Stopped : do / motor brake, LED blink 2Hz
+state Stopped : entry / motor brake, reset blink counter
+state Stopped : do / LED blink 2 Hz
 
 Initialization -down-> Operational
 Operational -up-> Initialization : reset

@@ -8,3 +8,6 @@
 Project3/tools/
 Project3/logs/*.png
 out/
+
+# Python
+__pycache__/

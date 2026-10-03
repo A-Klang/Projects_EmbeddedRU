@@ -1,6 +1,7 @@
 #pragma once
 #include <state.h>
 #include <digital_out.h>
+#include <controller.h>
 #include <stdint.h>
 
 class Initialization : public State {
@@ -26,12 +27,18 @@ class PreOperational : public State {
 
 class Operational : public State {
     public:
+        Operational(Controller* controller) : controller_(controller) {}
+        void set_controller(Controller* controller) { controller_ = controller; }
+        Controller* get_controller() { return controller_; }
         void on_entry() override;
         void on_exit() override;
         void on_step() override;
         void on_reset() override;
         void on_fault() override;
         void on_set_preoperational() override;
+        unsigned long entry_ms = 0; // ms_since_start when Operational was entered, for the test profile in main()
+    private:
+        Controller* controller_;
 };
 
 class Stopped : public State {

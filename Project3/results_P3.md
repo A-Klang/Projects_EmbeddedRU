@@ -77,3 +77,50 @@ The motor ran the step sequence, `r` was pressed at steady state at 60 RPM (~14.
 
 ### Interpretation
 The state machine behaves as the diagram: Initialization runs once at boot and after every reset, and the device ends up in Operational by itself. The control behaviour is the same as in Project 2, the speed settles at ~37 RPM for 40 RPM and ~54-57 RPM for 60 RPM. This is the steady-state error of a P controller, which the PI controller in Part 3 should remove.
+
+## Part 2
+
+### State diagram
+The Stopped state is added. A fault detected in Operational moves the device to Stopped, where the motor is braked and the LED blinks at 2 Hz. From Stopped, `o` (set operational) goes back to Operational and `r` (reset) goes to Initialization. A fault in Stopped is ignored, since the device is already stopped.
+
+![Part 2 state diagram](out/docs/diagrams/src/part2_states/part2_states.png)
+
+- Stopped, entry: motor brake (both H-bridge inputs high), blink counter reset.
+- Stopped, do: LED blink at 2 Hz.
+- Operational ==> Stopped on `fault`, which is the FLT pin being low.
+
+### Resource allocation
+| Resource | Use in Part 2 | Notes |
+|---|---|---|
+| D2 (PD2), FLT pin of the motor driver | Fault input, `Digital_in` with internal pull-up | FLT is open-drain and active low, so the pull-up keeps it high while there is no fault |
+| D13 (PB5), onboard LED | Toggled every 250 ms in Stopped | Gives a 2 Hz blink |
+| USART0 RX | `o` added as a command | `r` = reset, `o` = set operational |
+
+Memory (PlatformIO build output) for the finished Part 2: 363 B RAM, 5342 B Flash.
+
+### Implementation
+**Fault detection**
+- `Encoder::has_fault()` returns `flt.is_lo()`. The fault pin was added to the `Encoder` class since it already owns the motor driver pins.
+- `main()` polls `enc.has_fault()` on every loop iteration and calls `context.fault()` while it is low. The main loop runs much faster than the 1 ms control tick, so the fault is picked up within one tick.
+- Since the fault is polled as a level and not an edge, a fault that is still present is not lost: if `o` is pressed while FLT is still low, the device goes to Operational and immediately back to Stopped on the next loop iteration.
+
+**State behaviour**
+- `State` gets two new virtual handlers, `on_fault()` and `on_set_operational()`, with empty default bodies. Only the states where the event is in the diagram override them, the others ignore the event by default (e.g. `fault` in Stopped or Initialization, `o` in Operational).
+- `Operational::on_fault()` calls `transition_to(&stopped)`. The exit action of Operational (motor off) runs first, then the entry action of Stopped (brake).
+- `Stopped::on_entry()` calls `enc.brake()`, which sets both H-bridge inputs high (`dir_pin` high, PWM 255). This shorts the motor terminals through the bridge, so the motor is actively braked instead of coasting as with `stop_motor()`.
+- `Stopped::on_step()` toggles the LED every 250 ticks (250 ms), so a 2 Hz blink.
+- `Stopped::on_reset()` goes to Initialization and `Stopped::on_set_operational()` goes to Operational.
+
+### Test
+The FLT input was pulled low by hand with a wire to GND, as an "emergency stop" button. The motor ran the same step profile as in Part 1 (0 RPM until 1 s, 40 RPM until 8 s, then 60 RPM).
+
+![Fault detection test](logs/part2_faultDet_wire_backtoOperational.png)
+
+- Three faults were triggered at ~10.0 s, ~18.6 s and ~22.6 s while running at ~57 RPM. Each time the PWM went to 0 and the motor was braked from ~55-57 RPM to standstill in 90-100 ms.
+- `o` was pressed at ~14.9 s and ~20.6 s, and the motor went back to Operational and to the reference again.
+- `r` was pressed at ~24.4 s (dotted line). Boot-up was printed again and the step profile restarted from 0.
+- The LED was on in Operational and blinked at 2 Hz in Stopped (seen on the board, not in the log).
+- After the reset, the motor was held stationary by hand at ~29.8-33.5 s and ~34.5-37.2 s to try to cause an over-current fault. The controller saturated at PWM 255 with the speed at 0, but the FLT pin never went low, so no fault was triggered. This matches the note in the assignment that the fault pin may not give a repeatable fault depending on the power supply, which is why the manual wire was used to test the fault path.
+
+### Interpretation
+The fault path works as in the diagram: a low FLT moves the device from Operational to Stopped, the motor is braked within ~100 ms, and both `o` and `r` work from Stopped. The over-current fault from the driver itself could not be triggered with our power supply, so the fault detection was tested with the manual emergency stop input instead.
