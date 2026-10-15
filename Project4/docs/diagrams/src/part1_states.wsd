@@ -1,0 +1,14 @@
+@startuml part1_states
+title Motor controller node: NMT state behaviour (Part 1)
+[*] --> Initialization
+
+state Initialization : entry / motor off, reset position, Kp = 40, ref = 0, restart clock
+state Initialization : exit / send Boot-up message
+
+state Operational : entry / LED on
+state Operational : do / every 1 ms: u = controller.update(ref, speed), set PWM and direction
+state Operational : exit / motor off
+
+Initialization -down-> Operational
+Operational -up-> Initialization : reset
+@enduml
