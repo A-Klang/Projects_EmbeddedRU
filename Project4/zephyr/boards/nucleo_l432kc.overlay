@@ -3,54 +3,51 @@
 
 / {
 	aliases {
-		led0 = &led_0;
-	};
-	leds {
-		compatible = "gpio-leds";
-		led_0: led_0 {
-			gpios = <&gpiob 3>;
-		};
-	};
-};
-
-/ {
-	aliases {
-		sw1 = &user_button;
-	};
-
-	buttons {
-		compatible = "gpio-keys";
-		user_button: button_0 {
-			gpios = <&gpioa 1 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
-    label = "External button";
-		};
-	};
-};
-
-/ {
-	aliases {
 		c1-pin = &c1_node;
 		c2-pin = &c2_node;
 		pwm-pin = &pwm_node;
-		dir-pin = &dir_node;
+		gpio-dir = &gpio_dir;
 		flt-pin = &flt_node;
 	};
-	pins {
+
+	inputs {
 		compatible = "gpio-keys";
 		c1_node: pin_b7 { /* d4 */
-			gpios = <&gpiob 7>;
+			gpios = <&gpiob 7 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
 		};
 		c2_node: pin_b0 { /* d3 */
-			gpios = <&gpiob 0>;
+			gpios = <&gpiob 0 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
 		};
-		pwm_node: pin_a8 { /* d9 */
-			gpios = <&gpioa 8>;
-		};
-		dir_node: pin_a11 { /* d10 */
-			gpios = <&gpioa 11>;
-		};
+
 		flt_node: pin_b6 { /* d5 */
-			gpios = <&gpiob 6>;
+			gpios = <&gpiob 6 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
 		};
+	};
+
+	gpio_outputs {
+		compatible = "gpio-leds";
+
+		gpio_dir: gpio_dir { /* d6 */
+			gpios = <&gpiob 1 (GPIO_ACTIVE_HIGH)>;
+		};
+	};
+
+	pwm_outputs {
+		compatible = "pwm-leds";
+
+		pwm_node: pwm_node {
+			pwms = <&pwm1 1 PWM_USEC(120) PWM_POLARITY_NORMAL>; /* D9, 8.33 kHz */
+		};
+	};
+};
+
+&timers1 {
+	status = "okay";
+	st,prescaler = <0>;
+
+	pwm1: pwm {
+		status = "okay";
+		pinctrl-0 = <&tim1_ch1_pa8>;
+		pinctrl-names = "default";
 	};
 };
