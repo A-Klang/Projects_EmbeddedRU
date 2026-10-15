@@ -32,3 +32,13 @@
 | Serial.print / Serial.println for status messages (Arduino) | printk | TODO |
 | ATOMIC_BLOCK when reading ms_since_start in Operational::on_entry() | irq_lock() / irq_unlock() | TODO |
 | Arduino.h providing fabs() | math.h | TODO |
+
+## main.cpp
+
+| AVR mechanism | Zephyr API | Why |
+| --- | --- | --- |
+| Serial.begin() and sei() | removed, Zephyr starts the UART and enables interrupts itself | TODO |
+| Serial.print / Serial.println for the CSV output | printk | TODO |
+| Serial.available() / Serial.read() for commands | uart_poll_in() on the console UART (non-blocking) | TODO |
+| Serial.readStringUntil(), String, trim(), toDouble() for Kp, Ti and control law | read_line() helper with uart_poll_in(), char buffer and atof() | TODO |
+| ATOMIC_BLOCK when reading ms_since_start | irq_lock() / irq_unlock() | TODO |

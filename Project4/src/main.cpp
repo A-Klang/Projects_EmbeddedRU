@@ -1,35 +1,44 @@
-#include <Arduino.h>
 #include <encoder.h>
 #include <context.h>
 #include <nmt_states.h>
-#include <util/atomic.h>
 #include <string.h>
+#include <zephyr/kernel.h>
+#include <zephyr/drivers/uart.h>
+#include <stdlib.h>
+
+static const struct device *uart = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
+
 
 void print_data(unsigned long t_ms, double ref_speed, double actual_speed, double pwm_value) {
-  Serial.print(t_ms);
-  Serial.print(",");
-  Serial.print(ref_speed);
-  Serial.print(",");
-  Serial.print(actual_speed);
-  Serial.print(",");
-  Serial.println(pwm_value);
+  printk("%lu,%.2f,%.2f,%.2f\n", t_ms, ref_speed, actual_speed, pwm_value);
 }
+
+static void read_line(char *buf, int len) {
+  int i = 0;
+  while (i < len - 1) {
+    unsigned char c;
+    if (uart_poll_in(uart, &c) != 0) continue;   // nothing arrived yet, keep polling
+    if (c == '\n' || c == '\r') break;          // Enter ends the line
+    buf[i++] = c;
+  }
+  buf[i] = '\0';                                 // terminate so atof knows where the text ends
+}
+
 
 int main() {
   Context context(&initialization);
 
-  Serial.begin(115200);
   enc.init();
   status_led.init();
-  sei();
 
-  Serial.println("time_ms,ref_speed,actual_speed,pwm_value");
+  printk("time_ms,ref_speed,actual_speed,pwm_value\n");
   context.start();
 
 
   while (1){
-    if (Serial.available() > 0) {
-      char cmd = Serial.read();
+    unsigned char cmd;
+    if (uart_poll_in(uart, &cmd) == 0) {
+
       if (cmd == 'r') {
         context.reset();
       }
@@ -40,23 +49,25 @@ int main() {
         context.set_preoperational();
       }
       else if (cmd == 'k') {
-        String input = Serial.readStringUntil('\n');
-        input.trim();
-        double kp = input.toDouble();
+        char buf[16];
+        read_line(buf, sizeof(buf));
+        double kp = atof(buf);
         context.set_Kp(kp);
       }
       else if (cmd == 't') {
-        String input = Serial.readStringUntil('\n');
-        input.trim();
-        double ti = input.toDouble();
+        char buf[16];
+        read_line(buf, sizeof(buf));
+        double ti = atof(buf);
         context.set_Ti(ti);
-        } 
+      }
       else if (cmd == 'l') {
-        String input = Serial.readStringUntil('\n');
-        input.trim();
-        context.set_control_law(*input.c_str());
+        char buf[16];
+        read_line(buf, sizeof(buf));
+        char *law = buf;
+        while (*law == ' ') law++; // skip leading spaces, like trim() did
+        context.set_control_law(*law);
       }
-      }
+    }
 
     if (enc.has_fault()) {
       context.fault();
@@ -67,7 +78,9 @@ int main() {
       context.step();
     }
     unsigned long t;
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { t = enc.ms_since_start; }
+    unsigned int key = irq_lock();
+    t = enc.ms_since_start;
+    irq_unlock(key);
 
     // Load test profile, timed from entering Operational: 0 RPM until 1s, then constant 40 RPM.
     // The step test used 0 RPM until 1s, 40 RPM until 8s, then 60 RPM.
