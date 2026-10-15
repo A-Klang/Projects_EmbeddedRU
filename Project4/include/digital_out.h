@@ -16,5 +16,5 @@ public:
 
 
 private:
-  uint8_t pinMask;
+  uint8_t id;
 };

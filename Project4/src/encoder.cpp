@@ -1,16 +1,21 @@
-#include <avr/io.h>
-#include <avr/interrupt.h>
+#include <zephyr/kernel.h>
+#include <zephyr/drivers/gpio.h>
 #include <encoder.h>
-#include <Arduino.h>
 #include <timer_msec.h>
 #include <analog_out.h>
-#include <util/atomic.h>
 
-
-Encoder enc(4, 3, 0, 1, 2); // C2=PD3, C1=PD4, AIN1 = PB0, AIN2 = PB1, FLT = PD2
-volatile uint8_t portd_history = 0xFF; // default is high because of pull-up
+Encoder enc(4, 3, 0, 1, 2); // C1=D4/PB7, C2=D3/PB0, AIN1=D9/PA8, AIN2=D6/PB1, FLT=D5/PB6
 
 Timer_msec timer;
+
+static const struct gpio_dt_spec c1_int = GPIO_DT_SPEC_GET(DT_ALIAS(c1_pin), gpios);
+static struct gpio_callback c1_cb_data;
+
+static void c1_isr(const struct device *dev, struct gpio_callback *cb, gpio_port_pins_t pins)
+{
+    enc.update();
+}
+
 
 Encoder::Encoder(uint8_t c1_pin, uint8_t c2_pin, uint8_t AIN1_port, uint8_t AIN2_port, uint8_t flt_pin)
 : pwm_pin(AIN1_port), dir_pin(AIN2_port), c1(c1_pin), c2(c2_pin), flt(flt_pin), last_c1(false),
@@ -28,9 +33,10 @@ void Encoder::init() {
     pos = 0;
     counter = 0;
 
-    portd_history = PIND;
-    PCMSK2 |= (1 << PCINT20); // Enable pin-change interrupt for PD4
-    PCICR |= (1 << PCIE2);    // Enable pin-change interrupt group for PORTD
+    gpio_pin_interrupt_configure_dt(&c1_int, GPIO_INT_EDGE_BOTH);
+    gpio_init_callback(&c1_cb_data, c1_isr, BIT(c1_int.pin));
+    gpio_add_callback(c1_int.port, &c1_cb_data);
+
 }
 
 int Encoder::get_position() {
@@ -49,7 +55,10 @@ void Encoder::brake() {
 
 float Encoder::get_speed() {
     float s;
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {s = speed_rpm;}
+    unsigned int key = irq_lock();
+    s = speed_rpm;
+    irq_unlock(key);
+
     return s;
 }
 
@@ -83,17 +92,7 @@ void Encoder::sample_speed() {
     speed_rpm = (((float)delta / (period_ms * window_ticks)) / counts_per_rev) * 60000.0f;
 }
 
-
-ISR (PCINT2_vect)
-{
-    uint8_t changed_bits = PIND ^ portd_history;
-    portd_history = PIND;
-    if(changed_bits & (1 << PIND4)) // PD4 changed
-    enc.update();
-}
-
-ISR(TIMER1_COMPA_vect) 
-{
+void timer_msec_tick() {
     enc.counter++;
     enc.ms_since_start++;
     enc.sample_speed();

@@ -3,12 +3,12 @@
 #include <encoder.h>
 #include <controller.h>
 #include <controllers.h>
-#include <Arduino.h>
-#include <util/atomic.h>
+#include <zephyr/kernel.h>
+#include <math.h>
 
 Initialization initialization;
 Operational operational(&pi); // controller is passed to the motor controller, switched in PreOperational
-Digital_out status_led(5); // PB5 = nano led
+Digital_out status_led(5); // led0 (PB3) on the Nucleo
 Stopped stopped;
 PreOperational preoperational;
 
@@ -21,7 +21,7 @@ void Initialization::on_entry() {
 }
 
 void Initialization::on_exit() {
-    Serial.println("Boot-up");
+    printk("Boot-up\n");
 }
 
 void Initialization::on_step() {
@@ -37,32 +37,19 @@ void PreOperational::on_step() {
         blink_ticks = 0;
         status_led.toggle();
     }
-    // if (Serial.available() > 0) {
-    //   String cmd = Serial.readString();
-    //   if (strcmp(cmd.c_str(), "kp")) {
-    //     set_Kp(Serial.parseInt());
-    //   }
-
-    //   else if (strcmp(cmd.c_str(), "ti")) {
-    //     set_Ti(Serial.parseInt());
-    //   }
-    // }
 }
 
 void PreOperational::on_set_Kp(double K_p) {
     // Kp goes to the selected controller, so P and PI can keep their own tuning
     operational.get_controller()->Kp = K_p;
-    Serial.print(operational.get_controller() == &pi ? "PI" : "P");
-    Serial.print(" Kp set to ");
-    Serial.println(K_p);
+    printk("%s Kp set to %.2f\n", operational.get_controller() == &pi ? "PI" : "P", K_p);
 }
 
 void PreOperational::on_set_Ti(double T_i) {
     // Ti is only used by the PI controller, so it is set there whichever law is selected
     if (T_i > 0) {
         pi.Ti = T_i;
-        Serial.print("PI Ti set to ");
-        Serial.println(T_i);
+        printk("PI Ti set to %.2f\n", T_i);
     }
 }
 
@@ -81,18 +68,20 @@ void PreOperational::on_fault() {
 void PreOperational::on_set_control_law(char law) {
     if (law == 'i') {
         operational.set_controller(&pi);
-        Serial.println("Control law: PI");
+        printk("Control law: PI\n");
     }
     else {
         operational.set_controller(&p);
-        Serial.println("Control law: P");
+        printk("Control law: P\n");
     }
 }
 
 void Operational::on_entry() {
     status_led.set_hi();
     controller_->reset();
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { entry_ms = enc.ms_since_start; }
+    unsigned int key = irq_lock();
+    entry_ms = enc.ms_since_start;
+    irq_unlock(key);
 }
 
 void Operational::on_step() {

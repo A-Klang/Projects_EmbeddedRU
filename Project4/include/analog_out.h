@@ -1,7 +1,7 @@
 #ifndef ANALOG_OUT_H
 #define ANALOG_OUT_H
 
-#include <timer_usec.h>
+#include <stdint.h>
 #include <digital_out.h>
 
 class Analog_out
@@ -12,7 +12,7 @@ public:
     void set(double duty_cycle);
 
 private:
-    Timer_usec timer;
+    uint32_t period_ns;
 public:    
     Digital_out pin;
 };

@@ -1,5 +1,4 @@
 #pragma once
-#include <stdio.h>
 #include <stdint.h>
 
 class Digital_in
@@ -11,5 +10,5 @@ class Digital_in
         bool is_lo();
 
     private:
-        uint8_t pinMask;
+        uint8_t id;
 };

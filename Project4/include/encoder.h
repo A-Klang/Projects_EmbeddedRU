@@ -1,5 +1,4 @@
 #pragma once
-
 #include <digital_in.h>
 #include <digital_out.h>
 #include <analog_out.h>
@@ -9,7 +8,7 @@ class Encoder
     public:
         Encoder(uint8_t c1_pin, uint8_t c2_pin, uint8_t AIN1_port, uint8_t AIN2_port, uint8_t flt_pin);
         void init();
-        void update(); // called from ISR(PCINT2_vect), not meant to be called directly
+        void update(); // called from the C1 GPIO callback
         void sample_speed();
         int get_position();
         float get_speed();

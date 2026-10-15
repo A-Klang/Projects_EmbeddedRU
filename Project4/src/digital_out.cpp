@@ -1,22 +1,39 @@
-#include <avr/io.h>
 #include <digital_out.h>
+#include <zephyr/drivers/gpio.h>
 
-// Bound to Port B currently
+static const struct gpio_dt_spec dir_spec  = GPIO_DT_SPEC_GET(DT_ALIAS(gpio_dir), gpios);
+static const struct gpio_dt_spec led_spec = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+
+
+static const struct gpio_dt_spec* lookup(uint8_t id) {
+    switch (id) {
+        case 1: return &dir_spec;
+        case 5: return &led_spec;
+        default: return nullptr;
+    }
+}
+
 Digital_out::Digital_out(uint8_t pin) 
-: pinMask(1 << pin) {}
+: id(pin) {}
 
 void Digital_out::init() {
-    DDRB |= pinMask;
+    const struct gpio_dt_spec* spec = lookup(id);
+    if (spec == nullptr) return;
+    gpio_pin_configure_dt(spec, GPIO_OUTPUT_INACTIVE);
 }
 
 void Digital_out::set_hi() {
-    PORTB |= pinMask;
+    const struct gpio_dt_spec* spec = lookup(id);
+    if (spec != nullptr) gpio_pin_set_dt(spec, 1);
+
 }
 
 void Digital_out::set_lo() {
-    PORTB &= ~pinMask;
+    const struct gpio_dt_spec* spec = lookup(id);
+    if (spec != nullptr) gpio_pin_set_dt(spec, 0);
 }
 
 void Digital_out::toggle() {
-    PORTB ^= pinMask;
+    const struct gpio_dt_spec* spec = lookup(id);
+    if (spec != nullptr) gpio_pin_toggle_dt(spec);
 }

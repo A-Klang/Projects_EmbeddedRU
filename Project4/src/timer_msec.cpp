@@ -1,28 +1,21 @@
-#include <avr/io.h>
-#include <avr/interrupt.h>
+#include <zephyr/kernel.h>
 #include <timer_msec.h>
+
+void timer_msec_tick();
+
+static void expiry(struct k_timer *t) {
+    timer_msec_tick();
+}
+K_TIMER_DEFINE(tick_timer, expiry, NULL);
+
     
 Timer_msec::Timer_msec(){}
 
 void Timer_msec:: init(int period_ms, int duty_cycle){
-    TCCR1A = 0; // Setting timer1 to normal operation
-    TCCR1B = 0;
-    TCNT1 = 0; // Initialize counter value
-
-    uint32_t period_ticks = (F_CPU / 64UL) * (uint32_t)period_ms / 1000UL; // F_CPU = 16 000 000
-    if (period_ticks > 65536UL) period_ticks = 65536UL;      // 16-bit clamp
-    OCR1A = (uint16_t)(period_ticks - 1); // F_CPU = 16 000 000
-    set_duty_cycle(duty_cycle);
-
-    TCCR1B |= (1<<WGM12);
-    TIMSK1 |= (1<<OCIE1A);
-    TCCR1B |= (1<<CS11) | (1<<CS10);
+    (void)duty_cycle;
+    k_timer_start(&tick_timer, K_MSEC(period_ms), K_MSEC(period_ms));
 }
-void Timer_msec::set_duty_cycle(int duty_cycle){
-    uint16_t on_ticks = (uint16_t)((uint32_t)OCR1A * duty_cycle / 100UL);
 
-    uint8_t sreg = SREG;
-    cli();
-    OCR1B = on_ticks;
-    SREG = sreg;
+void Timer_msec::set_duty_cycle(int duty_cycle){
+    (void)duty_cycle;
 }
