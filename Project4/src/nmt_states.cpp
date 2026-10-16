@@ -11,6 +11,8 @@ Operational operational(&pi); // controller is passed to the motor controller, s
 Digital_out status_led(5); // led0 (PB3) on the Nucleo
 Stopped stopped;
 PreOperational preoperational;
+void (*on_boot_up)() = nullptr;
+
 
 void Initialization::on_entry() {
     enc.stop_motor();
@@ -22,7 +24,9 @@ void Initialization::on_entry() {
 
 void Initialization::on_exit() {
     printk("Boot-up\n");
+    if (on_boot_up) on_boot_up();
 }
+
 
 void Initialization::on_step() {
     context_->transition_to(&preoperational);

@@ -57,3 +57,4 @@ extern Operational operational;
 extern Digital_out status_led;
 extern Stopped stopped;
 extern PreOperational preoperational;
+extern void (*on_boot_up)(); // called when Initialization finishes, set by main

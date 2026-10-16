@@ -6,6 +6,7 @@ class Context {
         State* state_;
     public:
         Context(State* initial);
+        State* current() { return state_; }
         void start();
         void transition_to(State* next);
         void step();
