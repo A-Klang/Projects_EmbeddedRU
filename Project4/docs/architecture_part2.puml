@@ -1,120 +1,127 @@
 @startuml
-title Project 4 Part 2 - Final CANopen Motor-Control Architecture
+title Project 4 Part 2 - CANopen Architecture
 
 top to bottom direction
 skinparam componentStyle rectangle
 skinparam packageStyle rectangle
 skinparam shadowing false
 skinparam linetype ortho
-skinparam nodesep 30
-skinparam ranksep 35
+skinparam nodesep 45
+skinparam ranksep 45
+skinparam defaultFontSize 13
 
-node "Raspberry Pi - CANopen manager" as Pi {
-  component "CANopen management and test tools\nNMT manager | SDO client | PDO tools\ncandump / cansend diagnostics" as PiTools
-  component "SocketCAN" as SocketCAN
-  component "Linux CAN driver\nand CAN interface" as LinuxCan
-  component "CAN transceiver" as PiTransceiver
+node "Raspberry Pi" as Pi {
+  component "NMT / SDO client\ncandump / cansend" as PiApp
+  component "SocketCAN\nLinux CAN driver" as SocketCAN
+  component "CAN HAT\ntransceiver" as PiPhy
 
-  PiTools -down-> SocketCAN
-  SocketCAN -down-> LinuxCan
-  LinuxCan -down-> PiTransceiver
+  PiApp -down-> SocketCAN
+  SocketCAN -down-> PiPhy
 }
 
-cloud "Classical CAN bus\n11-bit identifiers (CAN 2.0A)\n120-ohm termination at both ends" as CanBus
+cloud "CAN bus\nCAN_H / CAN_L\n120 ohm at both ends" as Bus
 
-PiTransceiver -down- CanBus
+PiPhy -- Bus
 
-node "Nucleo-L432KC - CANopen node ID 1" as Nucleo {
-  package "CAN hardware and Zephyr adapter" as CanPlatform {
-    component "External CAN\ntransceiver" as NucleoTransceiver
-    component "STM32 CAN controller\n+ Zephyr CAN driver" as ZephyrCanDriver
-    component "Zephyr CAN adapter" as ZephyrCanAdapter
+node "Nucleo-L432KC - Node ID 1" as Nucleo {
+  package "OSI L1 - Physical" as Physical {
+    component "CAN transceiver" as Transceiver
+  }
 
-    NucleoTransceiver -down-> ZephyrCanDriver : CAN RX / TX
-    ZephyrCanDriver -down-> ZephyrCanAdapter : Zephyr frames
+  package "OSI L2 - Data link" as DataLink {
+    component "STM32 CAN\nZephyr driver" as CanDriver
+    component "Zephyr CAN adapter" as CanAdapter
+
+    CanDriver -down-> CanAdapter
   }
 
   interface "ICan" as ICan
 
-  package "Portable CANopen layer - no Zephyr dependencies" as CanOpen {
-    component "CAN frame router\nCOB-ID dispatch" as Router
-    component "NMT service\n+ Boot-up / heartbeat" as NmtHeartbeat
-    component "Data services\nSDO server | RPDO1 consumer | TPDO1 producer" as DataServices
-    component "Little-endian codec" as Encoding
-    component "Object dictionary" as ObjectDictionary
+  package "OSI L7 - CANopen (no Zephyr)" as CanOpen {
+    component "Frame router" as Router
+    component "NMT / Boot-up\n0x000 / 0x701" as Nmt
+    component "SDO server\n0x601 / 0x581" as Sdo
+    component "RPDO1\n0x201" as Rpdo
+    component "TPDO1\n0x181" as Tpdo
+    component "Little-endian\ncodec" as Codec
+    component "Object dictionary\naccess + aborts" as Dictionary
 
-    Router -down-> NmtHeartbeat
-    Router -down-> DataServices
-    DataServices --> Encoding
-    DataServices -down-> ObjectDictionary
+    Router -down-> Nmt
+    Router -down-> Sdo
+    Router -down-> Rpdo
+    Router -down-> Tpdo
+
+    Sdo -down-> Dictionary
+    Rpdo -down-> Dictionary
+    Tpdo -down-> Dictionary
+
+    Sdo --> Codec
+    Rpdo --> Codec
+    Tpdo --> Codec
   }
 
-  package "Motor-control application" as Application {
-    component "NMT-aware motor\nstate machine" as StateMachine
-    component "Target / profile\nmanagement" as Reference
-    component "Periodic control loop" as ControlLoop
-    component "P / PI controller" as Controller
-    component "Encoder interface" as Encoder
-    component "Motor interface" as Motor
-    component "Fault and LED\nmanagement" as HardwareState
+  package "OSI L7 - Motor application (CAN-independent)" as Application {
+    component "State machine" as StateMachine
+    component "Application data" as AppData
+    component "Setpoint\ngenerator" as Setpoint
+    component "Control loop" as ControlLoop
+    component "P / PI\ncontroller" as Controller
+    component "Encoder" as Encoder
+    component "Motor" as Motor
+    component "Fault / LED" as FaultLed
 
-    StateMachine --> Reference : enable / reset
-    Reference --> Controller : velocity reference
-    Encoder --> Controller : actual velocity
-    ControlLoop --> Controller : periodic update
-    Controller --> Motor : signed duty command
-    HardwareState <--> StateMachine : fault / status
+    StateMachine --> Setpoint
+    AppData --> Setpoint
+    Setpoint --> Controller
+    Encoder --> Controller
+    ControlLoop --> Controller
+    Controller --> Motor
+    Encoder --> AppData
+    Controller --> AppData
+    FaultLed <--> StateMachine
   }
 
-  package "Zephyr motor I/O" as MotorIo {
-    component "Kernel timer" as KernelTiming
-    component "GPIO / counter" as GpioCounterDriver
-    component "PWM / direction" as PwmDriver
+  package "Local Zephyr I/O" as LocalIo {
+    component "Timer" as Timer
+    component "GPIO inputs\n+ interrupt" as GpioIn
+    component "GPIO outputs" as GpioOut
+    component "PWM" as Pwm
   }
 
-  ZephyrCanAdapter ..down.|> ICan : implements
-  ICan -down-> Router : CAN frames
+  Transceiver -- CanDriver
+  CanAdapter ..down.|> ICan
+  ICan <--> Router : CAN frames
 
-  NmtHeartbeat <--> StateMachine : NMT state
+  Nmt <--> StateMachine : NMT state
+  Dictionary --> StateMachine : state check
+  Dictionary --> AppData : typed values
 
-  ObjectDictionary -down-> Reference
-  ObjectDictionary -down-> Controller
-  Encoder --> ObjectDictionary
-  Controller --> ObjectDictionary
-
-  KernelTiming --> ControlLoop : 1 ms tick
-  GpioCounterDriver --> Encoder : position / fault input
-  PwmDriver --> Motor : PWM / direction output
+  Timer --> ControlLoop
+  GpioIn --> Encoder
+  GpioIn --> FaultLed
+  GpioOut --> FaultLed
+  GpioOut --> Motor
+  Pwm --> Motor
 }
 
-CanBus -down- NucleoTransceiver
+Bus -- Transceiver
 
-note right of ICan
-  Portable CAN-frame interface.
-  The CANopen layer contains
-  no Zephyr API calls.
+note right of Dictionary
+  Missing object: 0x06020000
+  Wrong NMT state: 0x08000022
 end note
 
-note right of ObjectDictionary
-  |= Index |= Object |= Access |
-  | 0x1000 | Device type | RO |
-  | 0x2000 | Controller type | RW |
-  | 0x2001 | Kp | RW |
-  | 0x2002 | Ti | RW |
-  | 0x2010 | Output duty cycle | RO |
-  | 0x606C | Velocity actual value | RO |
-  | 0x6083 | Profile acceleration | RW |
-  | 0x6084 | Profile deceleration | RW |
-  | 0x60FF | Target velocity | RW |
+note right of CanOpen
+  SDO: Pre-operational or Operational
+  RPDO1 / TPDO1: Operational only
 end note
 
 legend left
-  |= Layer |= Responsibility |
-  | Raspberry Pi | CANopen management, test and diagnostics |
-  | CAN hardware / adapter | CAN physical link and Zephyr boundary |
-  | Portable CANopen | Protocol services and object dictionary |
-  | Motor-control application | State, profile and closed-loop control |
-  | Zephyr motor I/O | Timing, encoder, fault and motor outputs |
+  |= OSI |= Responsibility |
+  | L7 | Motor application and CANopen services |
+  | L2 | CAN controller, frames and drivers |
+  | L1 | Transceivers, wiring and termination |
+  | L3-L6 | Not used |
 endlegend
 
 @enduml
