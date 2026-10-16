@@ -10,10 +10,13 @@ Timer_msec timer;
 
 static const struct gpio_dt_spec c1_int = GPIO_DT_SPEC_GET(DT_ALIAS(c1_pin), gpios);
 static struct gpio_callback c1_cb_data;
+static const struct gpio_dt_spec dbg = GPIO_DT_SPEC_GET(DT_ALIAS(dbg_pin), gpios); // D11, high while the callback runs
 
 static void c1_isr(const struct device *dev, struct gpio_callback *cb, gpio_port_pins_t pins)
 {
+    gpio_pin_set_dt(&dbg, 1);
     enc.update();
+    gpio_pin_set_dt(&dbg, 0);
 }
 
 
@@ -33,6 +36,7 @@ void Encoder::init() {
     pos = 0;
     counter = 0;
 
+    gpio_pin_configure_dt(&dbg, GPIO_OUTPUT_INACTIVE);
     gpio_pin_interrupt_configure_dt(&c1_int, GPIO_INT_EDGE_BOTH);
     gpio_init_callback(&c1_cb_data, c1_isr, BIT(c1_int.pin));
     gpio_add_callback(c1_int.port, &c1_cb_data);

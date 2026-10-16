@@ -8,6 +8,7 @@
 		pwm-pin = &pwm_node;
 		gpio-dir = &gpio_dir;
 		flt-pin = &flt_node;
+		dbg-pin = &dbg_node;
 	};
 
 	inputs {
@@ -29,6 +30,10 @@
 
 		gpio_dir: gpio_dir { /* d6 */
 			gpios = <&gpiob 1 (GPIO_ACTIVE_HIGH)>;
+		};
+
+		dbg_node: dbg_node { /* d11, ISR latency measurement */
+			gpios = <&gpiob 5 (GPIO_ACTIVE_HIGH)>;
 		};
 	};
 

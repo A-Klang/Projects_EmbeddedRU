@@ -82,10 +82,16 @@ int main() {
     t = enc.ms_since_start;
     irq_unlock(key);
 
-    // Load test profile, timed from entering Operational: 0 RPM until 1s, then constant 40 RPM.
-    // The step test used 0 RPM until 1s, 40 RPM until 8s, then 60 RPM.
+    // Step test profile, timed from entering Operational: 0 RPM until 1s, 40 RPM until 8s, 60 RPM until 12s,
+    // then -40 RPM to check the PWM in reverse.
     unsigned long t_op = t - operational.entry_ms;
-    if (t_op >= 1000) {
+    if (t_op >= 12000) {
+      enc.ref_speed = -40;
+    }
+    else if (t_op >= 8000) {
+      enc.ref_speed = 60;
+    }
+    else if (t_op >= 1000) {
       enc.ref_speed = 40;
     }
     else {
