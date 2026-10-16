@@ -7,6 +7,8 @@ public:
     CanOpenNode(ICan &can, NodeApp &app, uint8_t node_id) : can_(can), app_(app), node_id_(node_id) {}
     void process();     // handles all received frames, called from the main loop
     void send_bootup();
+    void on_control_tick(); // called once per 1 ms control update, sends TPDO1
+
 
 private:
     void handle_nmt(const CanFrame &f);
@@ -15,4 +17,5 @@ private:
     ICan &can_;
     NodeApp &app_;
     uint8_t node_id_;
+    uint8_t tpdo_count_ = 0;
 };

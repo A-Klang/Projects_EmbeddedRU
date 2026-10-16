@@ -13,6 +13,10 @@ static uint32_t get_le32(const uint8_t *p) { return p[0] | (p[1] << 8) | (p[2] <
 static void put_le16(uint8_t *p, uint16_t v) { p[0] = v; p[1] = v >> 8; }
 static void put_le32(uint8_t *p, uint32_t v) { p[0] = v; p[1] = v >> 8; p[2] = v >> 16; p[3] = v >> 24; }
 
+static const uint16_t COB_TPDO1 = 0x180; // + node id
+static const uint8_t TPDO1_EVERY = 10;   // control updates per TPDO1, 10 ms = 100 Hz
+
+
 
 void CanOpenNode::process() {
     CanFrame f;
@@ -83,4 +87,22 @@ void CanOpenNode::handle_rpdo(const CanFrame &f) {
     if (app_.nmt_state() != NmtState::Operational) return; // PDOs only in Operational
     if (f.dlc < 4) return;
     od_write(app_, 0x60FF, get_le32(&f.data[0])); // RPDO1 bytes 0-3 are mapped to the target velocity
+}
+
+void CanOpenNode::on_control_tick() {
+    if (app_.nmt_state() != NmtState::Operational) { tpdo_count_ = 0; return; } // PDOs only in Operational
+    if (++tpdo_count_ < TPDO1_EVERY) return;
+    tpdo_count_ = 0;
+
+    uint32_t velocity, duty;
+    uint8_t size;
+    od_read(app_, 0x606C, velocity, size);
+    od_read(app_, 0x2010, duty, size);
+
+    CanFrame f = {};
+    f.id = COB_TPDO1 + node_id_;
+    f.dlc = 6;
+    put_le32(&f.data[0], velocity); // bytes 0-3, velocity actual value
+    put_le16(&f.data[4], duty);     // bytes 4-5, output duty cycle
+    can_.send(f);
 }

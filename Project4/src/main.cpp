@@ -30,6 +30,7 @@ int main() {
     if (enc.control_tick) {
       enc.control_tick = false;
       context.step();
+      node.on_control_tick();
     }
   }
 
