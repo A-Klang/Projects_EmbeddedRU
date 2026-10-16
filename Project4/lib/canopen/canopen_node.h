@@ -10,6 +10,8 @@ public:
 
 private:
     void handle_nmt(const CanFrame &f);
+    void handle_sdo(const CanFrame &f);
+    void handle_rpdo(const CanFrame &f);
     ICan &can_;
     NodeApp &app_;
     uint8_t node_id_;

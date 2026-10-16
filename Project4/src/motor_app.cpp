@@ -1,6 +1,7 @@
 #include <motor_app.h>
 #include <nmt_states.h>
 #include <controllers.h>
+#include <encoder.h>
 
 NmtState MotorApp::nmt_state() {
     State *s = context_.current();
@@ -26,3 +27,18 @@ void MotorApp::nmt_reset_node() {
 }
 
 void MotorApp::nmt_reset_communication() { context_.reset(); }
+
+float MotorApp::velocity_actual() { return enc.get_speed(); }
+float MotorApp::duty_cycle() { return enc.pwm_value / 255.0f; }
+
+uint8_t MotorApp::controller_type() { return operational.get_controller() == &pi ? 1 : 0; }
+void MotorApp::set_controller_type(uint8_t type) { context_.set_control_law(type ? 'i' : 'p'); }
+
+float MotorApp::kp() { return operational.get_controller()->Kp; }
+void MotorApp::set_kp(float kp) { context_.set_Kp(kp); }
+
+float MotorApp::ti() { return pi.Ti; }
+void MotorApp::set_ti(float ti) { context_.set_Ti(ti); }
+
+int32_t MotorApp::target_velocity() { return enc.ref_speed; }
+void MotorApp::set_target_velocity(int32_t rpm) { enc.ref_speed = rpm; }
