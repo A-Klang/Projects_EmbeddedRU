@@ -15,7 +15,6 @@ static void put_le16(uint8_t *p, uint16_t v) { p[0] = v; p[1] = v >> 8; }
 static void put_le32(uint8_t *p, uint32_t v) { p[0] = v; p[1] = v >> 8; p[2] = v >> 16; p[3] = v >> 24; }
 
 static const uint16_t COB_TPDO1 = 0x180; // + node id
-static const uint8_t TPDO1_EVERY = 10;   // control updates per TPDO1, 10 ms = 100 Hz
 
 
 
