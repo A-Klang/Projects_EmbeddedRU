@@ -1,0 +1,58 @@
+#include <zephyr/dt-bindings/gpio/gpio.h>   /* GPIO_ACTIVE_LOW, GPIO_PULL_UP */
+#include <zephyr/dt-bindings/pwm/pwm.h>   /* PWM_MSEC, PWM_POLARITY_NORMAL */
+
+/ {
+	aliases {
+		c1-pin = &c1_node;
+		c2-pin = &c2_node;
+		pwm-pin = &pwm_node;
+		gpio-dir = &gpio_dir;
+		flt-pin = &flt_node;
+		dbg-pin = &dbg_node;
+	};
+
+	inputs {
+		compatible = "gpio-keys";
+		c1_node: pin_b7 { /* d4 */
+			gpios = <&gpiob 7 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+		};
+		c2_node: pin_b0 { /* d3 */
+			gpios = <&gpiob 0 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+		};
+
+		flt_node: pin_b6 { /* d5 */
+			gpios = <&gpiob 6 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+		};
+	};
+
+	gpio_outputs {
+		compatible = "gpio-leds";
+
+		gpio_dir: gpio_dir { /* d6 */
+			gpios = <&gpiob 1 (GPIO_ACTIVE_HIGH)>;
+		};
+
+		dbg_node: dbg_node { /* d11, ISR latency measurement */
+			gpios = <&gpiob 5 (GPIO_ACTIVE_HIGH)>;
+		};
+	};
+
+	pwm_outputs {
+		compatible = "pwm-leds";
+
+		pwm_node: pwm_node {
+			pwms = <&pwm1 1 PWM_USEC(120) PWM_POLARITY_NORMAL>; /* D9, 8.33 kHz */
+		};
+	};
+};
+
+&timers1 {
+	status = "okay";
+	st,prescaler = <0>;
+
+	pwm1: pwm {
+		status = "okay";
+		pinctrl-0 = <&tim1_ch1_pa8>;
+		pinctrl-names = "default";
+	};
+};
