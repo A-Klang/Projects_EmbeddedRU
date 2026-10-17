@@ -22,6 +22,13 @@ void tpdo_handler(struct k_work *work)
 }
 K_WORK_DEFINE(tpdo_work, tpdo_handler);
 
+void bootup_handler(struct k_work *work)
+{
+  node.send_bootup();
+}
+K_WORK_DEFINE(bootup_work, bootup_handler);
+
+
 void controller_task(void*, void*, void*)
 {
   while(1) {
@@ -45,7 +52,7 @@ void controller_task(void*, void*, void*)
 K_THREAD_DEFINE(controller_task_id, 1024, controller_task, NULL, NULL, NULL, CONTROLLER_TASK_PRIORITY, 0, SYS_FOREVER_MS);
 
 
-static void boot_up() { node.send_bootup(); }
+static void boot_up() { k_work_submit(&bootup_work); } // called from the control thread, so the send goes to the work queue
 
 int main() {
   enc.init();
