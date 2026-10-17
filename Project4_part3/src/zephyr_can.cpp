@@ -31,7 +31,7 @@ bool ZephyrCan::send(const CanFrame &frame) {
 
 bool ZephyrCan::receive(CanFrame &frame) {
     struct can_frame f;
-    if (k_msgq_get(&can_rx_msgq, &f, K_NO_WAIT) != 0) return false;
+    if (k_msgq_get(&can_rx_msgq, &f, K_FOREVER) != 0) return false;
     frame.id = f.id;
     frame.dlc = f.dlc;
     memcpy(frame.data, f.data, f.dlc);

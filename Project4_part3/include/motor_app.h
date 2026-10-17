@@ -1,6 +1,7 @@
 #pragma once
 #include <node_app.h>
 #include <context.h>
+#include <zephyr/kernel.h>
 
 class MotorApp : public NodeApp {
 public:
@@ -26,3 +27,6 @@ public:
 private:
     Context &context_;
 };
+
+extern struct k_mutex app_mutex;
+

@@ -100,5 +100,5 @@ void timer_msec_tick() {
     enc.counter++;
     enc.ms_since_start++;
     enc.sample_speed();
-    enc.control_tick = true;
+    k_sem_give(&control_sem);
 }

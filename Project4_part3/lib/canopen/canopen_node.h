@@ -17,5 +17,5 @@ private:
     ICan &can_;
     NodeApp &app_;
     uint8_t node_id_;
-    uint8_t tpdo_count_ = 0;
 };
+

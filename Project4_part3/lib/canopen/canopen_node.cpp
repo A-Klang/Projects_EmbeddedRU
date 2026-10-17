@@ -1,6 +1,7 @@
 #include <canopen_node.h>
 #include <object_dictionary.h>
 
+
 static const uint16_t COB_NMT = 0x000;
 static const uint16_t COB_RPDO1 = 0x200;  // + node id
 static const uint16_t COB_SDO_TX = 0x580; // + node id, response from the node
@@ -90,9 +91,8 @@ void CanOpenNode::handle_rpdo(const CanFrame &f) {
 }
 
 void CanOpenNode::on_control_tick() {
-    if (app_.nmt_state() != NmtState::Operational) { tpdo_count_ = 0; return; } // PDOs only in Operational
-    if (++tpdo_count_ < TPDO1_EVERY) return;
-    tpdo_count_ = 0;
+    if (app_.nmt_state() != NmtState::Operational) return; // PDOs only in Operational
+
 
     uint32_t velocity, duty;
     uint8_t size;

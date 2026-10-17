@@ -43,3 +43,4 @@ class Encoder
 };
 
 extern Encoder enc;
+extern struct k_sem control_sem;
