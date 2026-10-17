@@ -147,3 +147,142 @@ Same PI parameters as in Project 3 (Kp = 34, Ti = 0.03 s) and the same profile, 
 
 The response is the same as in Project 3, the only difference is a slightly faster rise on the second step.
 
+
+# Part 2: CAN and a reduced CANopen interface
+
+## CAN bring-up
+
+The Nucleo is connected to the CAN Pal (3V3, GND, D10 to RX, D2 to TX), and the CAN HAT sits on the Raspberry Pi. CAN_H, CAN_L and GND are wired between the two. The termination was switched on at both ends, measured as 60 Ω between CAN_H and CAN_L. The bus runs at 125 kbit/s on both sides, `can0` is brought up with `sudo ip link set can0 up type can bitrate 125000`.
+
+Frames sent by the Nucleo with the example code from L4.4 (id 0x123, 8 bytes, every 100 ms), seen with `candump can0`:
+
+![candump 0x123](part2_1_candump_123.png)
+
+After changing the id to 0x456 and the length to 4 bytes:
+
+![candump 0x456](part2_1_candump_456.png)
+
+Frames sent from the Raspberry Pi with `cansend`, and `candump` filtered on id 0x321:
+
+![cansend](part2_1_cansend.png)
+
+![candump filtered on 0x321](part2_1_candump_filter_321.png)
+
+Only the 0x321 frame is shown, the 0x456 frames from the Nucleo and the 0x322 frame are filtered out.
+
+Reception on the Nucleo uses a filter on id 0x321 and a message queue (`CAN_MSGQ_DEFINE()`, `can_add_rx_filter_msgq()`), and the frames are printed from the main loop. The 0x321 frame is received, the 0x322 frame is not:
+
+![Nucleo reception](part2_1_nucleo_rx_321.png)
+
+Frame decoded by the oscilloscope on CAN_H:
+
+![Decoded CAN frame](part2_1_scope_can_frame.png)
+
+The decoder shows id 0x456, DLC 4, data 01 02 03 04, the CRC and the ACK from the Raspberry Pi.
+
+## Architecture
+
+![Architecture Part 2](../docs/architecture_part2.svg)
+
+| Layer | OSI | Contents |
+| --- | --- | --- |
+| Motor application | 7 | State machine, controllers, encoder and motor from Project 3, `MotorApp` |
+| CANopen | 7 | NMT, Boot-up, SDO server, RPDO1, TPDO1, object dictionary, little-endian packing (`lib/canopen`) |
+| CAN driver | 2 | `ZephyrCan`, which implements the `ICan` interface with the Zephyr CAN driver and the STM32 CAN controller |
+| Transceiver | 1 | CAN Pal and CAN HAT, wiring and termination |
+
+CANopen does not use OSI layers 3 to 6.
+
+- The application does not know about COB-IDs, byte order or the frame format. The CANopen layer reads and writes it through the `NodeApp` interface, implemented by `MotorApp` with the Project 3 `Context`, encoder and controllers.
+- The byte packing, the access rules and the abort codes are all in the CANopen layer (`canopen_node.cpp`, `object_dictionary.cpp`).
+- The CANopen layer has no Zephyr calls. It sends and receives frames only through `ICan`.
+
+## Testing the services
+
+All tests from the Raspberry Pi with `cansend`, responses from `candump can0`.
+
+### NMT and Boot-up
+
+| Sent | Result |
+| --- | --- |
+| Reset button | `701 [1] 00`, LED blinks at 1 Hz (Pre-operational) |
+| `000#01.01` | LED on (Operational) |
+| `000#02.01` | LED blinks at 2 Hz (Stopped) |
+| `000#80.01` | LED blinks at 1 Hz (Pre-operational) |
+| `000#81.01` (reset node) | `701 [1] 00` |
+| `000#82.01` (reset communication) | `701 [1] 00` |
+| `000#01.00` (all nodes) | LED on (Operational) |
+| `000#80.02` (node 2) | no change |
+
+![NMT](part2_2_nmt_candump.png)
+
+### SDO
+
+| Test | Request on 0x601 | Response on 0x581 |
+| --- | --- | --- |
+| Read device type | `40 00 10 00 00 00 00 00` | `43 00 10 00 92 01 00 00` |
+| Read Kp (40.0) | `40 01 20 00 00 00 00 00` | `43 01 20 00 00 00 20 42` |
+| Write Kp = 34.0 | `23 01 20 00 00 00 08 42` | `60 01 20 00 00 00 00 00` |
+| Write Ti = 0.03 | `23 02 20 00 8F C2 F5 3C` | `60 02 20 00 00 00 00 00` |
+| Read controller type (PI) | `40 00 20 00 00 00 00 00` | `4F 00 20 00 01 00 00 00` |
+| Object that does not exist | `40 00 30 00 00 00 00 00` | `80 00 30 00 00 00 02 06`, abort 0x06020000 |
+| Write to read-only object | `23 00 10 00 01 00 00 00` | `80 00 10 00 02 00 01 06`, abort 0x06010002 |
+| Write Kp in Operational | `23 01 20 00 00 00 08 42` | `80 01 20 00 22 00 00 08`, abort 0x08000022 |
+| Read in Stopped | `40 00 10 00 00 00 00 00` | no response |
+
+![SDO tests](part2_2_sdo_tests.png)
+
+### RPDO1 and TPDO1
+
+With the node Operational, `201#28.00.00.00` sets the target velocity to 40 RPM. The velocity actual value and the duty cycle read back over SDO:
+
+![RPDO1 and SDO read-back](part2_2_rpdo_40rpm.png)
+
+The velocity is 0x28 = 40 RPM (0x2B = 43 is one encoder count), the duty cycle around 0x1C5 = 45.3 %.
+
+TPDO1 is sent every 10 ms in Operational, with the velocity in bytes 0-3 and the duty cycle in 0.1 % in bytes 4-5 (`candump -td can0,181:7FF`):
+
+![TPDO1](part2_2_tpdo1.png)
+
+### Behaviour in each NMT state
+
+| Service | Pre-operational | Operational | Stopped |
+| --- | --- | --- | --- |
+| NMT | accepted | accepted | accepted |
+| SDO | answered | answered, configuration objects aborted with 0x08000022 | no response |
+| RPDO1 | ignored, motor stays still | target velocity set | ignored |
+| TPDO1 | not sent | sent every 10 ms | not sent |
+
+## TPDO rate and bus load
+
+TPDO1 is sent on every 10th control update, so at 100 Hz. That is the rate the speed measurement changes at, since the speed is computed over a 10 ms window.
+
+A standard frame with n data bytes has 47 + 8n bits including the 3 bit interframe space. In the worst case a stuff bit is added after every 4 bits in the 34 + 8n bits from SOF to the CRC, which is ⌊(33 + 8n)/4⌋ extra bits.
+
+| Frame | Bytes | Bits | Stuff bits (worst case) | Total |
+| --- | --- | --- | --- | --- |
+| TPDO1 | 6 | 95 | 20 | 115 |
+| RPDO1 | 4 | 79 | 16 | 95 |
+| SDO request or response | 8 | 111 | 24 | 135 |
+| NMT | 2 | 63 | 12 | 75 |
+
+The other frames are sent by the Raspberry Pi. As a worst case RPDO1 is also sent at 100 Hz, plus 10 SDO transfers per second (request and response), and NMT is negligible:
+
+| Frame | Rate | Load |
+| --- | --- | --- |
+| TPDO1 | 100 Hz | 11.5 kbit/s |
+| RPDO1 | 100 Hz | 9.5 kbit/s |
+| SDO | 10 transfers/s | 2.7 kbit/s |
+| Total | | 23.7 kbit/s |
+
+That is 19 % of 125 kbit/s. The minimum bitrate at 100 % load would be 23.7 kbit/s. With the usual limit of about 50 % bus load it is 47.4 kbit/s, so the lowest standard bitrate that works is 50 kbit/s.
+
+Bus load measured with `canbusload -t -b -r -e can0@125000`, with only TPDO1 on the bus:
+
+![canbusload](part2_2_canbusload.png)
+
+100 frames/s and 10207 bit/s, so 8 % load. That is about 102 bits per frame, between 95 without stuffing and the worst case of 115, which fits the calculated 11.5 kbit/s (9.2 %) as an upper bound.
+
+## Parameters over SDO, target on RPDO1, check on TPDO1
+
+In Pre-operational, Kp = 34 and Ti = 0.03 s were written over SDO (0x2001, 0x2002). Then the node was set Operational and 40 RPM sent on RPDO1. On TPDO1 the speed goes from 0 to 0x28 = 40 RPM in about 40 ms and then stays at 37-43 RPM (one encoder count), and the duty cycle settles around 0x1FC = 50.8 %, see the TPDO1 screenshot above.
