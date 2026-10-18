@@ -5,6 +5,8 @@
 #include <controllers.h>
 #include <zephyr/kernel.h>
 #include <math.h>
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(nmt_states, LOG_LEVEL_INF);
 
 Initialization initialization;
 Operational operational(&pi); // controller is passed to the motor controller, switched in PreOperational
@@ -23,7 +25,7 @@ void Initialization::on_entry() {
 }
 
 void Initialization::on_exit() {
-    printk("Boot-up\n");
+    LOG_INF("Boot-up");
     if (on_boot_up) on_boot_up();
 }
 
@@ -46,14 +48,14 @@ void PreOperational::on_step() {
 void PreOperational::on_set_Kp(double K_p) {
     // Kp goes to the selected controller, so P and PI can keep their own tuning
     operational.get_controller()->Kp = K_p;
-    printk("%s Kp set to %.2f\n", operational.get_controller() == &pi ? "PI" : "P", K_p);
+    LOG_INF("%s Kp set to %.2f", operational.get_controller() == &pi ? "PI" : "P", K_p);
 }
 
 void PreOperational::on_set_Ti(double T_i) {
     // Ti is only used by the PI controller, so it is set there whichever law is selected
     if (T_i > 0) {
         pi.Ti = T_i;
-        printk("PI Ti set to %.2f\n", T_i);
+        LOG_INF("PI Ti set to %.2f", T_i);
     }
 }
 
@@ -72,11 +74,11 @@ void PreOperational::on_fault() {
 void PreOperational::on_set_control_law(char law) {
     if (law == 'i') {
         operational.set_controller(&pi);
-        printk("Control law: PI\n");
+        LOG_INF("Control law: PI");
     }
     else {
         operational.set_controller(&p);
-        printk("Control law: P\n");
+        LOG_INF("Control law: P");
     }
 }
 

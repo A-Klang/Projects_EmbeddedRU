@@ -3,12 +3,13 @@
 
 static const struct gpio_dt_spec dir_spec  = GPIO_DT_SPEC_GET(DT_ALIAS(gpio_dir), gpios);
 static const struct gpio_dt_spec led_spec = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
-
+static const struct gpio_dt_spec dbg_spec = GPIO_DT_SPEC_GET(DT_ALIAS(dbg_pin), gpios);
 
 static const struct gpio_dt_spec* lookup(uint8_t id) {
     switch (id) {
         case 1: return &dir_spec;
         case 5: return &led_spec;
+        case 11: return &dbg_spec;
         default: return nullptr;
     }
 }

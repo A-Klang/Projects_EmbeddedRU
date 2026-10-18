@@ -5,6 +5,8 @@
 #include <zephyr_can.h>
 #include <canopen_node.h>
 #include <motor_app.h>
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
 #define CONTROLLER_TASK_PRIORITY 1
 K_MUTEX_DEFINE(app_mutex);
@@ -15,6 +17,7 @@ ZephyrCan can;
 Context context(&initialization);
 MotorApp app(context);
 CanOpenNode node(can, app, 1);
+Digital_out dbg_pin(11); // D11, toggled at the start of each control update for measurement
 
 void tpdo_handler(struct k_work *work)
 {
@@ -33,6 +36,7 @@ void controller_task(void*, void*, void*)
 {
   while(1) {
     k_sem_take(&control_sem, K_FOREVER);
+    dbg_pin.toggle();
 
     k_mutex_lock(&app_mutex, K_FOREVER);
     if (enc.has_fault()) {
@@ -57,7 +61,8 @@ static void boot_up() { k_work_submit(&bootup_work); } // called from the contro
 int main() {
   enc.init();
   status_led.init();
-  if (!can.init()) printk("CAN init failed\n");
+  dbg_pin.init();
+  if (!can.init()) LOG_ERR("CAN init failed");
   on_boot_up = boot_up;
   context.start();
   k_thread_start(controller_task_id);
