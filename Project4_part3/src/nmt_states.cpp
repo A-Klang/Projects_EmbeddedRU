@@ -83,13 +83,16 @@ void PreOperational::on_set_control_law(char law) {
 void Operational::on_entry() {
     status_led.set_hi();
     controller_->reset();
+    setpoint.reset();
     unsigned int key = irq_lock();
     entry_ms = enc.ms_since_start;
     irq_unlock(key);
 }
 
 void Operational::on_step() {
-    enc.pwm_value = controller_->update(enc.ref_speed, enc.get_speed());
+    double ref = setpoint.update(enc.ref_speed); // ramps the reference towards the target
+    enc.pwm_value = controller_->update(ref, enc.get_speed());
+
 
     if (enc.pwm_value >= 0) {
         enc.dir_pin.set_lo();

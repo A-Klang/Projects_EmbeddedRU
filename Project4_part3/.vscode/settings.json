@@ -1,4 +1,4 @@
 {
-    "cmake.sourceDirectory": "C:/Users/carte/OneDrive/Documents/PlatformIO/Projects/Projects_EmbeddedRU/Project4/zephyr",
+    "cmake.sourceDirectory": "${workspaceFolder}/zephyr",
     "cmake.ignoreCMakeListsMissing": true
 }

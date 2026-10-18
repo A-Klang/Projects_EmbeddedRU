@@ -1,5 +1,6 @@
 #pragma once
 #include <math.h>
+#include <setpoint_generator.h>
 
 class Controller {
     public:
@@ -10,3 +11,5 @@ class Controller {
         double Kp;
         double Ti;
 };
+
+extern SetpointGenerator setpoint;

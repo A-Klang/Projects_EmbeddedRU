@@ -22,5 +22,11 @@ public:
     virtual int32_t target_velocity() = 0;
     virtual void set_target_velocity(int32_t rpm) = 0;
 
+
+    virtual uint32_t profile_acc() = 0;  // RPM/s, 0 = no limit
+    virtual void set_profile_acc(uint32_t rpm_s) = 0;
+    virtual uint32_t profile_dec() = 0;
+    virtual void set_profile_dec(uint32_t rpm_s) = 0;
+    
     virtual ~NodeApp() {}
 };

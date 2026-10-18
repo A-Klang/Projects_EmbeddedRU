@@ -40,6 +40,8 @@ void MotorApp::nmt_reset_node() {
     p.Kp = 40;
     pi.Kp = 40;
     pi.Ti = 0.1;
+    setpoint.acc = 0;
+    setpoint.dec = 0;
     operational.set_controller(&pi);
     context_.reset();
     k_mutex_unlock(&app_mutex);
@@ -116,3 +118,30 @@ void MotorApp::set_target_velocity(int32_t rpm) {
     enc.ref_speed = rpm;
     k_mutex_unlock(&app_mutex);
 }
+
+uint32_t MotorApp::profile_acc() {
+    k_mutex_lock(&app_mutex, K_FOREVER);
+    uint32_t acc = setpoint.acc;
+    k_mutex_unlock(&app_mutex);
+    return acc;
+}
+
+void MotorApp::set_profile_acc(uint32_t rpm_s) {
+    k_mutex_lock(&app_mutex, K_FOREVER);
+    setpoint.acc = rpm_s;
+    k_mutex_unlock(&app_mutex);
+}
+
+uint32_t MotorApp::profile_dec() {
+    k_mutex_lock(&app_mutex, K_FOREVER);
+    uint32_t dec = setpoint.dec;
+    k_mutex_unlock(&app_mutex);
+    return dec;
+}
+
+void MotorApp::set_profile_dec(uint32_t rpm_s) {
+    k_mutex_lock(&app_mutex, K_FOREVER);
+    setpoint.dec = rpm_s;
+    k_mutex_unlock(&app_mutex);
+}
+

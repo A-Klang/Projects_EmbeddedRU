@@ -2,6 +2,7 @@
 
 P_controller p(40);
 PI_controller pi(40, 0.1, 0.001); // dt = 1 ms control period
+SetpointGenerator setpoint(0.001);
 
 double P_controller::update(double ref, double actual) {
     return Kp * (ref - actual);

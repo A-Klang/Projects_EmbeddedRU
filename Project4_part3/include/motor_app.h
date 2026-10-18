@@ -22,6 +22,11 @@ public:
     void set_ti(float ti) override;
     int32_t target_velocity() override;
     void set_target_velocity(int32_t rpm) override;
+    uint32_t profile_acc() override;
+    void set_profile_acc(uint32_t rpm_s) override;
+    uint32_t profile_dec() override;
+    void set_profile_dec(uint32_t rpm_s) override;
+
 
 
 private:
