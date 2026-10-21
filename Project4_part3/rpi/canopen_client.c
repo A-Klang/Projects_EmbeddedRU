@@ -55,6 +55,14 @@
 #define ERR_IO           (-2)
 #define ERR_PROTOCOL     (-3)
 
+/* Configuration written at start-up */
+#define CTRL_TYPE    1       /* 0 = P, 1 = PI */
+#define KP           40.0f
+#define TI           0.1f    /* s */
+#define PROFILE_ACC  1000    /* rpm/s */
+#define PROFILE_DEC  1000    /* rpm/s */
+
+
 /* ------------------------------------------------------------------ */
 /* Little-endian helpers                                                */
 /* ------------------------------------------------------------------ */
@@ -252,6 +260,36 @@ void report(const char *what, long r)
 /* Example                                                             */
 /* ------------------------------------------------------------------ */
 
+static uint32_t float_bits(float f)
+{
+    uint32_t b;
+    memcpy(&b, &f, sizeof(b));
+    return b;
+}
+
+/* Write one OD entry by SDO and read it back to verify. Returns 0 on success. */
+static long write_verify(int s, uint16_t index, uint32_t value, int size)
+{
+    char what[32];
+
+    snprintf(what, sizeof(what), "write 0x%04X", index);
+    long r = sdo_download(s, NODE_ID, index, 0, value, size, 500);
+    if (r) { report(what, r); return r; }
+
+    uint32_t readback;
+    snprintf(what, sizeof(what), "read 0x%04X", index);
+    r = sdo_upload(s, NODE_ID, index, 0, &readback, 500);
+    if (r) { report(what, r); return r; }
+
+    if (readback != value) {
+        fprintf(stderr, "0x%04X: wrote 0x%08X, read back 0x%08X\n", index, value, readback);
+        return ERR_PROTOCOL;
+    }
+    printf("0x%04X = 0x%08X verified\n", index, value);
+    return 0;
+}
+
+
 int main(int argc, char *argv[])
 {
     const char *ifname = argc > 1 ? argv[1] : "can0";
@@ -275,6 +313,16 @@ int main(int argc, char *argv[])
     r = sdo_upload(s, NODE_ID, 0x1000, 0, &device_type, 500);
     if (r) report("read 0x1000", r);
     else   printf("Device type: 0x%08X\n", device_type);
+
+    /* 1. Configure the controller and setpoint profile, verify by read-back */
+    if (write_verify(s, 0x2000, CTRL_TYPE, 1) ||
+        write_verify(s, 0x2001, float_bits(KP), 4) ||
+        write_verify(s, 0x2002, float_bits(TI), 4) ||
+        write_verify(s, 0x6083, PROFILE_ACC, 4) ||
+        write_verify(s, 0x6084, PROFILE_DEC, 4)) {
+        close(s);
+        return EXIT_FAILURE;
+    }
 
     /*
      * TODO:
