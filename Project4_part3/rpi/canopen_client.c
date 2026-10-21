@@ -301,6 +301,13 @@ static int rpdo1_send(int s, int32_t rpm)
     return can_send(s, COB_RPDO1(NODE_ID), d, 4);
 }
 
+static double s_since(const struct timespec *t0)
+{
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return (t.tv_sec - t0->tv_sec) + (t.tv_nsec - t0->tv_nsec) / 1e9;
+}
+
 
 
 int main(int argc, char *argv[])
@@ -337,22 +344,33 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-        /* 2. Set the node operational */
+    /* CSV log of TPDO1, file name from the second argument */
+    const char *csv_name = argc > 2 ? argv[2] : "tpdo1_log.csv";
+    FILE *csv = fopen(csv_name, "w");
+    if (!csv) {
+        perror(csv_name);
+        close(s);
+        return EXIT_FAILURE;
+    }
+    fprintf(csv, "time_s,target_rpm,speed_rpm,duty_pct\n");
+
+    /* 2. Set the node operational */
     r = nmt_send(s, NMT_START, NODE_ID);
     if (r) {
         report("NMT start", r);
+        fclose(csv);
         close(s);
         return EXIT_FAILURE;
     }
 
-    /* 3. Step the target velocity on RPDO1 and watch TPDO1 */
+    /* 3. Step the target velocity on RPDO1 and log TPDO1 to CSV */
     struct timespec t0;
     clock_gettime(CLOCK_MONOTONIC, &t0);
-    int stepped = 0;
+    int32_t target = 0;
     while (ms_since(&t0) < RUN_MS) {
-        if (!stepped && ms_since(&t0) >= STEP_AT_MS) {
-            report("RPDO1 step", rpdo1_send(s, STEP_RPM));
-            stepped = 1;
+        if (target != STEP_RPM && ms_since(&t0) >= STEP_AT_MS) {
+            target = STEP_RPM;
+            report("RPDO1 step", rpdo1_send(s, target));
         }
         struct can_frame f;
         r = can_recv_id(s, COB_TPDO1(NODE_ID), &f, 100);
@@ -360,10 +378,13 @@ int main(int argc, char *argv[])
             report("TPDO1", r);
             break;
         }
+        double t = s_since(&t0); /* time-stamp right after reception */
         int32_t speed = (int32_t)get_u32(&f.data[0]);
-        uint16_t duty = get_u16(&f.data[4]);
-        printf("%ld ms  speed %d rpm  duty %.1f %%\n", ms_since(&t0), speed, duty / 10.0);
+        int16_t duty = (int16_t)get_u16(&f.data[4]);
+        fprintf(csv, "%.6f,%d,%d,%.1f\n", t, target, speed, duty / 10.0);
     }
+    fclose(csv);
+    printf("Logged to %s\n", csv_name);
 
     /* Stop: zero target while still Operational, then Pre-operational */
     report("RPDO1 zero", rpdo1_send(s, 0));
@@ -372,8 +393,6 @@ int main(int argc, char *argv[])
 
     /*
      * TODO:
-     *  4. Receive TPDO1 frames with can_recv_id(), time-stamp them, and
-     *     write time, target, actual speed and duty cycle to a CSV file.
      *  5. On exit or Ctrl-C (SIGINT), set the target to zero and return
      *     the node to Pre-operational.
      */
