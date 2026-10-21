@@ -308,6 +308,15 @@ static double s_since(const struct timespec *t0)
     return (t.tv_sec - t0->tv_sec) + (t.tv_nsec - t0->tv_nsec) / 1e9;
 }
 
+/* Set by Ctrl-C, checked by the main loop */
+static volatile sig_atomic_t stop_requested = 0;
+
+static void on_sigint(int sig)
+{
+    (void)sig;
+    stop_requested = 1;
+}
+
 
 
 int main(int argc, char *argv[])
@@ -354,6 +363,11 @@ int main(int argc, char *argv[])
     }
     fprintf(csv, "time_s,target_rpm,speed_rpm,duty_pct\n");
 
+
+    /* Ctrl-C from here on runs the stop sequence instead of killing the program */
+    struct sigaction sa = { .sa_handler = on_sigint };
+    sigaction(SIGINT, &sa, NULL);
+
     /* 2. Set the node operational */
     r = nmt_send(s, NMT_START, NODE_ID);
     if (r) {
@@ -367,7 +381,7 @@ int main(int argc, char *argv[])
     struct timespec t0;
     clock_gettime(CLOCK_MONOTONIC, &t0);
     int32_t target = 0;
-    while (ms_since(&t0) < RUN_MS) {
+    while (!stop_requested && ms_since(&t0) < RUN_MS) {
         if (target != STEP_RPM && ms_since(&t0) >= STEP_AT_MS) {
             target = STEP_RPM;
             report("RPDO1 step", rpdo1_send(s, target));
@@ -375,7 +389,7 @@ int main(int argc, char *argv[])
         struct can_frame f;
         r = can_recv_id(s, COB_TPDO1(NODE_ID), &f, 100);
         if (r) {
-            report("TPDO1", r);
+            if (!stop_requested) report("TPDO1", r);
             break;
         }
         double t = s_since(&t0); /* time-stamp right after reception */
@@ -386,16 +400,10 @@ int main(int argc, char *argv[])
     fclose(csv);
     printf("Logged to %s\n", csv_name);
 
-    /* Stop: zero target while still Operational, then Pre-operational */
+    /* Stop, also on Ctrl-C: zero target while still Operational, then Pre-operational */
+    if (stop_requested) printf("Ctrl-C, stopping node\n");
     report("RPDO1 zero", rpdo1_send(s, 0));
     report("NMT pre-operational", nmt_send(s, NMT_PREOP, NODE_ID));
-
-
-    /*
-     * TODO:
-     *  5. On exit or Ctrl-C (SIGINT), set the target to zero and return
-     *     the node to Pre-operational.
-     */
 
     close(s);
     return EXIT_SUCCESS;
