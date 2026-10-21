@@ -57,14 +57,14 @@
 
 /* Configuration written at start-up */
 #define CTRL_TYPE    1       /* 0 = P, 1 = PI */
-#define KP           40.0f
-#define TI           0.1f    /* s */
-#define PROFILE_ACC  1000    /* rpm/s */
-#define PROFILE_DEC  1000    /* rpm/s */
+#define KP           34.0f
+#define TI           0.03f    /* s */
+#define PROFILE_LIMIT 1000   /* rpm/s, acc and dec, default if no third argument */
 
 #define STEP_RPM     40     /* target after the step */
-#define STEP_AT_MS   1000     /* time of the step, gives a baseline before it */
-#define RUN_MS       5000    /* length of the test */
+#define STEP_AT_MS   4000     /* time of the step, gives a baseline before it */
+#define STEP_DOWN_MS 8000    /* target back to 0 */
+#define RUN_MS       12000    /* length of the test */
 
 
 /* ------------------------------------------------------------------ */
@@ -343,12 +343,15 @@ int main(int argc, char *argv[])
     if (r) report("read 0x1000", r);
     else   printf("Device type: 0x%08X\n", device_type);
 
+    /* Profile acceleration and deceleration from the third argument, 0 = true step */
+    uint32_t profile = argc > 3 ? strtoul(argv[3], NULL, 10) : PROFILE_LIMIT;
+
     /* 1. Configure the controller and setpoint profile, verify by read-back */
     if (write_verify(s, 0x2000, CTRL_TYPE, 1) ||
         write_verify(s, 0x2001, float_bits(KP), 4) ||
         write_verify(s, 0x2002, float_bits(TI), 4) ||
-        write_verify(s, 0x6083, PROFILE_ACC, 4) ||
-        write_verify(s, 0x6084, PROFILE_DEC, 4)) {
+        write_verify(s, 0x6083, profile, 4) ||
+        write_verify(s, 0x6084, profile, 4)) {
         close(s);
         return EXIT_FAILURE;
     }
@@ -377,14 +380,16 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    /* 3. Step the target velocity on RPDO1 and log TPDO1 to CSV */
+    /* 3. Target 0 -> STEP_RPM -> 0 on RPDO1 and log TPDO1 to CSV */
     struct timespec t0;
     clock_gettime(CLOCK_MONOTONIC, &t0);
     int32_t target = 0;
     while (!stop_requested && ms_since(&t0) < RUN_MS) {
-        if (target != STEP_RPM && ms_since(&t0) >= STEP_AT_MS) {
-            target = STEP_RPM;
-            report("RPDO1 step", rpdo1_send(s, target));
+        long ms = ms_since(&t0);
+        int32_t want = (ms >= STEP_AT_MS && ms < STEP_DOWN_MS) ? STEP_RPM : 0;
+        if (want != target) {
+            target = want;
+            report("RPDO1 target", rpdo1_send(s, target));
         }
         struct can_frame f;
         r = can_recv_id(s, COB_TPDO1(NODE_ID), &f, 100);
