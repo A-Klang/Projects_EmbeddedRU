@@ -62,6 +62,10 @@
 #define PROFILE_ACC  1000    /* rpm/s */
 #define PROFILE_DEC  1000    /* rpm/s */
 
+#define STEP_RPM     40     /* target after the step */
+#define STEP_AT_MS   1000     /* time of the step, gives a baseline before it */
+#define RUN_MS       5000    /* length of the test */
+
 
 /* ------------------------------------------------------------------ */
 /* Little-endian helpers                                                */
@@ -289,6 +293,15 @@ static long write_verify(int s, uint16_t index, uint32_t value, int size)
     return 0;
 }
 
+/* RPDO1 bytes 0-3: target velocity, INTEGER32 rpm, little-endian */
+static int rpdo1_send(int s, int32_t rpm)
+{
+    uint8_t d[4];
+    put_u32(d, (uint32_t)rpm);
+    return can_send(s, COB_RPDO1(NODE_ID), d, 4);
+}
+
+
 
 int main(int argc, char *argv[])
 {
@@ -324,12 +337,41 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+        /* 2. Set the node operational */
+    r = nmt_send(s, NMT_START, NODE_ID);
+    if (r) {
+        report("NMT start", r);
+        close(s);
+        return EXIT_FAILURE;
+    }
+
+    /* 3. Step the target velocity on RPDO1 and watch TPDO1 */
+    struct timespec t0;
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    int stepped = 0;
+    while (ms_since(&t0) < RUN_MS) {
+        if (!stepped && ms_since(&t0) >= STEP_AT_MS) {
+            report("RPDO1 step", rpdo1_send(s, STEP_RPM));
+            stepped = 1;
+        }
+        struct can_frame f;
+        r = can_recv_id(s, COB_TPDO1(NODE_ID), &f, 100);
+        if (r) {
+            report("TPDO1", r);
+            break;
+        }
+        int32_t speed = (int32_t)get_u32(&f.data[0]);
+        uint16_t duty = get_u16(&f.data[4]);
+        printf("%ld ms  speed %d rpm  duty %.1f %%\n", ms_since(&t0), speed, duty / 10.0);
+    }
+
+    /* Stop: zero target while still Operational, then Pre-operational */
+    report("RPDO1 zero", rpdo1_send(s, 0));
+    report("NMT pre-operational", nmt_send(s, NMT_PREOP, NODE_ID));
+
+
     /*
      * TODO:
-     *  1. Write the controller type, Kp, Ti, profile acceleration and
-     *     deceleration, and read them back to verify.
-     *  2. Set the node operational (nmt_send(s, NMT_START, NODE_ID)).
-     *  3. Send target velocities on RPDO1 (COB_RPDO1, INTEGER32 RPM).
      *  4. Receive TPDO1 frames with can_recv_id(), time-stamp them, and
      *     write time, target, actual speed and duty cycle to a CSV file.
      *  5. On exit or Ctrl-C (SIGINT), set the target to zero and return
