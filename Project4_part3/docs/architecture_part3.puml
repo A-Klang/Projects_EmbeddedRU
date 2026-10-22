@@ -1,0 +1,151 @@
+@startuml
+title Project 4 Part 3 - CANopen Architecture with Zephyr tasks
+
+top to bottom direction
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 45
+skinparam ranksep 45
+skinparam defaultFontSize 13
+
+node "Raspberry Pi" as Pi {
+  component "canopen_client\n(NMT manager, SDO client,\nRPDO1 out, TPDO1 to CSV)" as PiApp
+  component "SocketCAN\nLinux CAN driver" as SocketCAN
+  component "CAN HAT\ntransceiver" as PiPhy
+
+  PiApp -down-> SocketCAN
+  SocketCAN -down-> PiPhy
+}
+
+cloud "CAN bus\nCAN_H / CAN_L\n120 ohm at both ends" as Bus
+
+PiPhy -- Bus
+
+node "Nucleo-L432KC - Node ID 1" as Nucleo {
+  package "OSI L1 - Physical" as Physical {
+    component "CAN transceiver" as Transceiver
+  }
+
+  package "OSI L2 - Data link" as DataLink {
+    component "STM32 CAN\nZephyr driver" as CanDriver
+    component "Zephyr CAN adapter" as CanAdapter
+
+    CanDriver -down-> CanAdapter
+  }
+
+  interface "ICan" as ICan
+
+  package "OSI L7 - CANopen (no Zephyr)" as CanOpen {
+    component "Frame router" as Router
+    component "NMT / Boot-up\n0x000 / 0x701" as Nmt
+    component "SDO server\n0x601 / 0x581" as Sdo
+    component "RPDO1\n0x201" as Rpdo
+    component "TPDO1\n0x181" as Tpdo
+    component "Little-endian\ncodec" as Codec
+    component "Object dictionary\naccess + aborts" as Dictionary
+
+    Router -down-> Nmt
+    Router -down-> Sdo
+    Router -down-> Rpdo
+    Router -down-> Tpdo
+
+    Sdo -down-> Dictionary
+    Rpdo -down-> Dictionary
+    Tpdo -down-> Dictionary
+
+    Sdo --> Codec
+    Rpdo --> Codec
+    Tpdo --> Codec
+  }
+
+  package "OSI L7 - Motor application (CAN-independent)" as Application {
+    component "State machine" as StateMachine
+    component "Application data" as AppData
+    component "Setpoint\ngenerator" as Setpoint
+    component "Control loop" as ControlLoop
+    component "P / PI\ncontroller" as Controller
+    component "Encoder" as Encoder
+    component "Motor" as Motor
+    component "Fault / LED" as FaultLed
+
+    StateMachine --> Setpoint
+    AppData --> Setpoint
+    Setpoint --> Controller
+    Encoder --> Controller
+    ControlLoop --> Controller
+    Controller --> Motor
+    Encoder --> AppData
+    Controller --> AppData
+    FaultLed <--> StateMachine
+  }
+
+  package "Local Zephyr I/O" as LocalIo {
+    component "k_timer 1 ms\n(ISR: speed sample,\ngive control_sem)" as Timer
+    component "GPIO inputs\n+ C1 interrupt" as GpioIn
+    component "GPIO outputs" as GpioOut
+    component "PWM" as Pwm
+  }
+
+  package "Zephyr tasks" as Tasks {
+    component "Control thread\nprio 1, preemptive\ntakes control_sem" as CtrlThread
+    component "Main thread = CAN thread\nprio 3, blocks on RX msgq" as CanThread
+    component "System work queue\nprio 4\nTPDO1, Boot-up send" as WorkQ
+    component "app_mutex" as Mutex
+  }
+
+  Transceiver -- CanDriver
+  CanAdapter ..down.|> ICan
+  ICan <--> Router : CAN frames
+
+  Nmt <--> StateMachine : NMT state
+  Dictionary --> StateMachine : state check
+  Dictionary --> AppData : typed values
+
+  Timer --> CtrlThread : control_sem
+  CtrlThread --> ControlLoop : step()
+  CtrlThread ..> WorkQ : every 10th update
+  CanDriver ..> CanThread : RX msgq (16)
+  CanThread --> Router : process()
+  WorkQ --> Tpdo
+  WorkQ --> Nmt : Boot-up
+  CtrlThread ..> Mutex
+  CanThread ..> Mutex
+  WorkQ ..> Mutex
+  GpioIn --> Encoder
+  GpioIn --> FaultLed
+  GpioOut --> FaultLed
+  GpioOut --> Motor
+  Pwm --> Motor
+}
+
+Bus -- Transceiver
+
+note right of Dictionary
+  Missing object: 0x06020000
+  Wrong NMT state: 0x08000022
+end note
+
+note right of CanOpen
+  SDO: Pre-operational or Operational
+  RPDO1 / TPDO1: Operational only
+end note
+
+note bottom of Tasks
+  Changed from Part 2: the superloop is split into tasks.
+  Frames are only sent from the work queue, never from
+  the control thread (can_send can block up to 10 ms).
+  MotorApp locks app_mutex for every access from
+  the CAN thread and the work queue.
+end note
+
+legend left
+  |= OSI |= Responsibility |
+  | L7 | Motor application and CANopen services |
+  | L2 | CAN controller, frames and drivers |
+  | L1 | Transceivers, wiring and termination |
+  | L3-L6 | Not used |
+endlegend
+
+@enduml

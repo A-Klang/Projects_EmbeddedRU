@@ -110,6 +110,13 @@ def main():
     compare_plot(p3_step, p4_step, "Step response, PI Kp = 34, Ti = 0.03 s: Project 3 vs Project 4",
                  "part3_2_step_P3_vs_P4.png")
 
+    # True step (acc = dec = 0) from the 0 -> 40 -> 0 run, the same kind of step as in Project 3
+    p4_true = crop(read_client("trap_acc0.csv"), 0, 3.99)
+    p3_true = crop(p3_step, 0, 3.99)
+    step_stats("P4 true step", p4_true)
+    compare_plot(p3_true, p4_true, "True step (no acceleration limit), PI Kp = 34, Ti = 0.03 s: Project 3 vs Project 4",
+                 "part3_2_truestep_P3_vs_P4.png")
+
     # Load response
     p4_load = read_client("load_40.csv")
     p3_load = load_p3("part4_PI_loadApplied.csv")
