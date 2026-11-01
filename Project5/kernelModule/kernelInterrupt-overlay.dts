@@ -1,0 +1,20 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+    compatible = "brcm,bcm2837";
+
+    fragment@0 {
+        target-path = "/";
+        __overlay__ {
+            gpio_irq_device: gpio-irq-device {
+                compatible = "custom,gpio-irq";
+                status = "okay";
+
+                /* Define the GPIO to use - GPIO23 */
+                interrupt-gpios = <&gpio 23 0>;
+                output-gpios = <&gpio 21 0>;
+            };
+        };
+    };
+};
