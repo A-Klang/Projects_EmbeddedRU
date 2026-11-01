@@ -1,7 +1,7 @@
 #include <controllers.h>
 
 P_controller p(40);
-PI_controller pi(5, 0.1, 0.01); // dt = 1 ms control period
+PI_controller pi(5, 0.1, 0.01); // dt = 10 ms control period
 
 double P_controller::update(double ref, double actual) {
     return Kp * (ref - actual);
